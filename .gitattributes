@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+# RFC 5545 asks for CRLF line ends, so the sample calendars keep their bytes as written.
+*.ics -text

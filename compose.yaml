@@ -1,0 +1,20 @@
+# PostgreSQL for local work. The user name and password are for this machine only.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: eventken
+      POSTGRES_USER: eventken
+      POSTGRES_PASSWORD: eventken
+    ports:
+      - "5432:5432"
+    volumes:
+      - eventken-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "eventken"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  eventken-db:

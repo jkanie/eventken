@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Maple Commons Market Society (sample data)</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FoodEvent",
+    "name": "Maple Commons Night Market",
+    "description": "Food stalls, local makers, live music.",
+    "startDate": "2027-07-03T17:00:00-0700",
+    "endDate": "2027-07-03T22:00:00-0700",
+    "url": "https://maple-commons.example/night-market",
+    "location": {
+      "@type": "Place",
+      "name": "Maple Commons",
+      "geo": { "@type": "GeoCoordinates", "latitude": 48.4400, "longitude": -123.3650 }
+    },
+    "organizer": "Maple Commons Market Society"
+  }
+  </script>
+  <script type="application/ld+json">
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "SaleEvent",
+      "name": "Maple Commons Plant Swap",
+      "startDate": "2027-07-24",
+      "endDate": "2027-07-24",
+      "url": "https://maple-commons.example/plant-swap",
+      "location": { "@type": "Place", "name": "Maple Commons" }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FoodEvent",
+      "name": "Harvest Supper",
+      "startDate": "2027-07-31T18:00:00-07:00",
+      "eventStatus": "https://schema.org/EventCancelled",
+      "url": "https://maple-commons.example/harvest-supper",
+      "location": { "@type": "Place", "name": "Maple Commons" }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SportsEvent",
+      "name": "Saltwater 10K Road Race",
+      "startDate": "2027-07-18T08:00:00-07:00",
+      "url": "https://maple-commons.example/saltwater-10k",
+      "location": { "@type": "Place", "name": "Driftwood Point" }
+    }
+  ]
+  </script>
+  <!-- A broken block, as real pages sometimes have. The parser skips it. -->
+  <script type="application/ld+json">{ "@type": "Event", "name": </script>
+</head>
+<body>
+  <h1>Maple Commons Market Society</h1>
+  <p>Every organisation, venue, event on this page is made up, for eventken's tests and demo.</p>
+</body>
+</html>

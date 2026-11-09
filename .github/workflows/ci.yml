@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: ktlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6.4.1
+      # The runner has an Android SDK, so the Android module is checked too.
+      - name: Kotlin style
+        run: ./gradlew ktlintCheck
+
+  server:
+    name: server (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: eventken
+          POSTGRES_USER: eventken
+          POSTGRES_PASSWORD: eventken
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eventken"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The tests use this database instead of starting their own container.
+      EVENTKEN_TEST_JDBC_URL: jdbc:postgresql://localhost:5432/eventken
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6.4.1
+      - name: Test
+        run: ./gradlew :server:test -Peventken.android=false
+      - name: Keep the test report
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: server-test-report
+          path: server/build/reports/tests/test
+
+  shared-desktop:
+    name: shared code and desktop app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6.4.1
+      # The desktop UI tests render off-screen, so the runner needs no display.
+      - name: Test
+        run: ./gradlew :shared:desktopTest :desktopApp:test -Peventken.android=false
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: shared-desktop-test-reports
+          path: |
+            shared/build/reports/tests
+            desktopApp/build/reports/tests
+
+  android:
+    name: Android app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6.4.1
+      # ubuntu-latest ships the Android SDK with android-37.0 and build-tools 36.0.0,
+      # with the licences accepted, at ANDROID_HOME. Robolectric runs the UI tests
+      # on the JVM, so no emulator is started.
+      - name: Build, test, lint
+        run: ./gradlew :androidApp:assembleDebug :androidApp:testDebugUnitTest :androidApp:lintDebug :shared:testAndroidHostTest
+      - name: Keep the APK
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: eventken-debug-apk
+          path: androidApp/build/outputs/apk/debug/*.apk
+      - name: Keep the reports
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: android-reports
+          path: |
+            androidApp/build/reports

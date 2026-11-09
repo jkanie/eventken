@@ -1,0 +1,23 @@
+# Gradle and Kotlin build output
+.gradle/
+.kotlin/
+build/
+out/
+
+# Machine-specific settings, such as the Android SDK path
+local.properties
+
+# Secrets: copy .env.example to .env and fill it in locally
+.env
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Android Studio captures
+captures/
+
+# OS files
+.DS_Store
+Thumbs.db

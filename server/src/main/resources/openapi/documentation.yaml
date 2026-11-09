@@ -1,0 +1,289 @@
+openapi: 3.0.3
+info:
+  title: eventken API
+  version: 0.1.0
+  description: |
+    Search public events gathered from iCalendar feeds and schema.org JSON-LD pages.
+    Read endpoints are open. Admin endpoints need the token set in EVENTKEN_ADMIN_TOKEN,
+    sent as `Authorization: Bearer <token>`.
+  license:
+    name: MIT
+    url: https://github.com/jkanie/eventken/blob/main/LICENSE
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: search
+  - name: admin
+  - name: health
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Whether the server can reach its database.
+      responses:
+        "200":
+          description: Healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: ok }
+        "503":
+          description: The database cannot be reached.
+  /api/events:
+    get:
+      tags: [search]
+      summary: Search by words, distance, dates, categories.
+      description: |
+        Without `from`, only events that have not ended yet are returned. With `lat` and `lon`,
+        each result carries `distanceKm`. With `radiusKm` too, events further away (or without a
+        place) are left out.
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 200 }, description: "Words to match, in web search syntax: quotes for phrases, - to exclude, or." }
+        - { name: lat, in: query, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lon, in: query, schema: { type: number, minimum: -180, maximum: 180 } }
+        - { name: radiusKm, in: query, schema: { type: number, exclusiveMinimum: true, minimum: 0, maximum: 500 } }
+        - { name: from, in: query, schema: { type: string, format: date-time }, description: "Events that end at or after this instant." }
+        - { name: to, in: query, schema: { type: string, format: date-time }, description: "Events that start at or before this instant." }
+        - { name: category, in: query, schema: { type: array, items: { type: string } }, explode: true, description: "Repeat, or separate with commas. An event matches when it has any of them." }
+        - { name: sort, in: query, schema: { type: string, enum: [relevance, start, distance] }, description: "Defaults to relevance with q, else start." }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { name: includeCancelled, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: 1 page of results.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchPage" }
+        "400":
+          description: The query breaks a rule. The message lists every problem.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/events/{id}:
+    get:
+      tags: [search]
+      summary: 1 event with its description and the feeds that list it.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: The event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventDetail" }
+        "404":
+          description: No such event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/categories:
+    get:
+      tags: [search]
+      summary: Categories of events that have not ended, most used first.
+      responses:
+        "200":
+          description: Categories with event counts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CategoryCount" }
+  /api/admin/feeds:
+    get:
+      tags: [admin]
+      summary: Every feed with its last fetch.
+      security: [{ adminToken: [] }]
+      responses:
+        "200":
+          description: The feeds.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Feed" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
+    post:
+      tags: [admin]
+      summary: Add a feed URL.
+      description: |
+        The URL must be http or https, and its host must resolve only to public addresses,
+        unless the server runs with ALLOW_PRIVATE_TARGETS.
+      security: [{ adminToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewFeed" }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Feed" }
+        "400":
+          description: The URL is refused, or the body is not valid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "409":
+          description: A feed with that URL exists already.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
+  /api/admin/feeds/{id}:
+    delete:
+      tags: [admin]
+      summary: Remove a feed with its listings, then events no other feed lists.
+      security: [{ adminToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: Removed. }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: No such feed. }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
+  /api/admin/feeds/{id}/ingest:
+    post:
+      tags: [admin]
+      summary: Fetch 1 feed now.
+      security: [{ adminToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: What the fetch found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeedIngestResult" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: No such feed. }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
+  /api/admin/ingest:
+    post:
+      tags: [admin]
+      summary: Fetch every feed now.
+      security: [{ adminToken: [] }]
+      responses:
+        "200":
+          description: 1 result per feed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestReport" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
+components:
+  securitySchemes:
+    adminToken:
+      type: http
+      scheme: bearer
+  responses:
+    Unauthorised:
+      description: The admin token is missing or wrong.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    AdminDisabled:
+      description: EVENTKEN_ADMIN_TOKEN is not set, so admin endpoints are off.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+  schemas:
+    EventSummary:
+      type: object
+      required: [id, title, startsAt, allDay, categories, cancelled, sourceCount]
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        allDay: { type: boolean }
+        timeZone: { type: string, example: America/Vancouver }
+        venue: { type: string }
+        address: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        categories: { type: array, items: { type: string } }
+        url: { type: string }
+        cancelled: { type: boolean }
+        sourceCount: { type: integer, description: "How many feeds list this event." }
+        distanceKm: { type: number, description: "Only when the search gave lat and lon." }
+    EventSource:
+      type: object
+      required: [feedId, feedUrl, externalId]
+      properties:
+        feedId: { type: integer, format: int64 }
+        feedUrl: { type: string }
+        externalId: { type: string }
+        url: { type: string }
+    EventDetail:
+      type: object
+      required: [summary, sources]
+      properties:
+        summary: { $ref: "#/components/schemas/EventSummary" }
+        description: { type: string }
+        organiser: { type: string }
+        sources: { type: array, items: { $ref: "#/components/schemas/EventSource" } }
+    SearchPage:
+      type: object
+      required: [total, limit, offset, items]
+      properties:
+        total: { type: integer, format: int64 }
+        limit: { type: integer }
+        offset: { type: integer }
+        items: { type: array, items: { $ref: "#/components/schemas/EventSummary" } }
+    CategoryCount:
+      type: object
+      required: [category, events]
+      properties:
+        category: { type: string }
+        events: { type: integer, format: int64 }
+    NewFeed:
+      type: object
+      required: [url, kind]
+      properties:
+        url: { type: string, example: https://example.org/events.ics }
+        kind: { type: string, enum: [ICAL, JSONLD] }
+        defaultCategory: { type: string, description: "Added to every event of this feed." }
+    Feed:
+      type: object
+      required: [id, url, kind, createdAt, eventCount]
+      properties:
+        id: { type: integer, format: int64 }
+        url: { type: string }
+        kind: { type: string, enum: [ICAL, JSONLD] }
+        defaultCategory: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastFetchedAt: { type: string, format: date-time }
+        lastStatus: { type: string, example: "ok: 12 events" }
+        eventCount: { type: integer, format: int64 }
+    FeedIngestResult:
+      type: object
+      required: [feedId, url, status]
+      properties:
+        feedId: { type: integer, format: int64 }
+        url: { type: string }
+        status: { type: string }
+        parsed: { type: integer }
+        created: { type: integer }
+        merged: { type: integer, description: "Events this feed shares with another feed." }
+        updated: { type: integer }
+    IngestReport:
+      type: object
+      required: [startedAt, finishedAt, feeds]
+      properties:
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+        feeds: { type: array, items: { $ref: "#/components/schemas/FeedIngestResult" } }
+    ApiError:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, example: invalid_query }
+        message: { type: string }

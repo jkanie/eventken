@@ -1,0 +1,38 @@
+-- Events the user saved, kept on the device so they show without a network.
+-- The full event goes in as JSON, so the detail view works offline. The columns
+-- next to it are the ones the app sorts and filters by.
+CREATE TABLE saved_event (
+    id INTEGER NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    starts_at_ms INTEGER NOT NULL,
+    ends_at_ms INTEGER,
+    detail_json TEXT NOT NULL,
+    saved_at_ms INTEGER NOT NULL,
+    reminders_on INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX saved_event_starts_at ON saved_event(starts_at_ms);
+
+selectAll:
+SELECT * FROM saved_event ORDER BY starts_at_ms, id;
+
+selectById:
+SELECT * FROM saved_event WHERE id = ?;
+
+-- Android 8 ships SQLite 3.18, which has no ON CONFLICT DO UPDATE, so a save
+-- is an insert that skips existing rows plus an update in 1 transaction.
+insertIfAbsent:
+INSERT OR IGNORE INTO saved_event (id, title, starts_at_ms, ends_at_ms, detail_json, saved_at_ms, reminders_on)
+VALUES (?, ?, ?, ?, ?, ?, 0);
+
+updateDetail:
+UPDATE saved_event SET title = ?, starts_at_ms = ?, ends_at_ms = ?, detail_json = ? WHERE id = ?;
+
+setReminders:
+UPDATE saved_event SET reminders_on = ? WHERE id = ?;
+
+deleteById:
+DELETE FROM saved_event WHERE id = ?;
+
+deleteEndedBefore:
+DELETE FROM saved_event WHERE coalesce(ends_at_ms, starts_at_ms) < ?;

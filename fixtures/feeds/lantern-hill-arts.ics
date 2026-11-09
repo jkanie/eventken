@@ -1,0 +1,88 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Lantern Hill Arts Collective//Sample Feed//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:Lantern Hill Arts Collective (sample data)
+X-WR-TIMEZONE:America/Vancouver
+BEGIN:VTIMEZONE
+TZID:America/Vancouver
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0800
+TZOFFSETTO:-0700
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+TZNAME:PDT
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0700
+TZOFFSETTO:-0800
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+TZNAME:PST
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:harbour-lights-2027@lantern-hill.example
+DTSTAMP:20270101T000000Z
+DTSTART;TZID=America/Vancouver:20270710T193000
+DTEND;TZID=America/Vancouver:20270710T213000
+SUMMARY:Harbour Lights Summer Concert
+DESCRIPTION:An evening of brass and strings on the harbour steps. Bring a
+  blanket\, the steps are cold after sunset.\nAll ages. Free entry.
+LOCATION:Harbourside Hall\, 100 Wharf Lane
+GEO:48.4235;-123.3700
+CATEGORIES:music,outdoor
+URL:https://lantern-hill.example/events/harbour-lights
+ORGANIZER;CN="Lantern Hill Arts Collective":mailto:events@lantern-hill.example
+ATTENDEE;CN="Sample Attendee";ROLE=REQ-PARTICIPANT:mailto:attendee@example.org
+END:VEVENT
+BEGIN:VEVENT
+UID:open-studio-2027@lantern-hill.example
+DTSTAMP:20270101T000000Z
+DTSTART;VALUE=DATE:20270717
+DTEND;VALUE=DATE:20270718
+SUMMARY:Open Studio Day
+DESCRIPTION:12 studios open their doors from 10:00 to 16:00.
+LOCATION:Lantern Hill Studios
+GEO:48.4310;-123.3550
+CATEGORIES:arts,family
+END:VEVENT
+BEGIN:VEVENT
+UID:poetry-lantern-2027@lantern-hill.example
+DTSTAMP:20270101T000000Z
+DTSTART;TZID=America/Vancouver:20270714T190000
+DTEND;TZID=America/Vancouver:20270714T203000
+SUMMARY:Poetry by Lantern Light
+STATUS:CANCELLED
+LOCATION:Lantern Hill Studios
+GEO:48.4310;-123.3550
+CATEGORIES:books
+END:VEVENT
+BEGIN:VEVENT
+UID:jazz-park-2027@lantern-hill.example
+DTSTAMP:20270101T000000Z
+DTSTART:20270724T180000
+DURATION:PT2H
+SUMMARY:Jazz in Cedar Grove Park
+LOCATION:Cedar Grove Park bandstand
+GEO:48.4120;-123.3400
+CATEGORIES:music,outdoor
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-PT30M
+DESCRIPTION:This text belongs to the alarm\, not the event.
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pottery-basics-2027@lantern-hill.example
+DTSTAMP:20270101T000000Z
+DTSTART;TZID=America/Vancouver:20270706T180000
+DTEND;TZID=America/Vancouver:20270706T200000
+RRULE:FREQ=WEEKLY;COUNT=4
+SUMMARY:Pottery Basics\, Week 1
+DESCRIPTION:Clay\, glaze\, a wheel for each person.
+LOCATION:Lantern Hill Studios
+GEO:48.4310;-123.3550
+CATEGORIES:arts,learning
+END:VEVENT
+END:VCALENDAR

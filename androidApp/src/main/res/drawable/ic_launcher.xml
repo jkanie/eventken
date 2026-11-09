@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A map pin over a calendar page, drawn as a vector so 1 file serves every screen density. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#00696E"
+        android:pathData="M8,10h32a2,2 0,0 1,2 2v28a2,2 0,0 1,-2 2H8a2,2 0,0 1,-2 -2V12a2,2 0,0 1,2 -2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,16c-4.4,0 -8,3.4 -8,7.7C16,29.5 24,37 24,37s8,-7.5 8,-13.3C32,19.4 28.4,16 24,16zM24,27a3,3 0,1 1,0 -6a3,3 0,0 1,0 6z" />
+    <path
+        android:fillColor="#FFB870"
+        android:pathData="M14,6h4v8h-4zM30,6h4v8h-4z" />
+</vector>

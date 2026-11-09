@@ -1,0 +1,45 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Saltwater Running Club//Sample Feed//EN
+X-WR-CALNAME:Saltwater Running Club (sample data)
+X-WR-TIMEZONE:America/Vancouver
+BEGIN:VEVENT
+UID:10k-2027@saltwater-running.example
+DTSTAMP:20270101T000000Z
+DTSTART:20270718T150000Z
+DTEND:20270718T180000Z
+SUMMARY:Saltwater 10K
+DESCRIPTION:A flat 10 km loop along the shore. Water stations every 2.5 km.
+LOCATION:Driftwood Point Shelter
+GEO:48.4030;-123.3500
+CATEGORIES:sport,outdoor
+URL:https://saltwater-running.example/10k
+ORGANIZER;CN=Saltwater Running Club:mailto:hello@saltwater-running.example
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-P1D
+DESCRIPTION:Race tomorrow
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:sunset-trail-2027@saltwater-running.example
+DTSTAMP:20270101T000000Z
+DTSTART:20270722T020000Z
+DTEND:20270722T033000Z
+SUMMARY:Sunset Trail Run
+DESCRIPTION:8 km on forest trails\; headlamps after 20:30.
+LOCATION:Mossy Ridge trailhead
+GEO:48.4600;-123.4100
+CATEGORIES:sport,outdoor
+END:VEVENT
+BEGIN:VEVENT
+UID:clinic-2027@saltwater-running.example
+DTSTAMP:20270101T000000Z
+DTSTART:20270707T013000Z
+DTEND:20270707T030000Z
+SUMMARY:Beginner Running Clinic
+DESCRIPTION:Pacing\, shoes\, warm-ups for new runners.
+LOCATION:Saltwater Running Club room\, 12 Tide Street
+CATEGORIES:sport,learning
+END:VEVENT
+END:VCALENDAR

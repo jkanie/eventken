@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Harbourside Hall: what's on (sample data)</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://harbourside-hall.example/#org",
+        "name": "Harbourside Hall Society"
+      },
+      {
+        "@type": "MusicEvent",
+        "@id": "https://harbourside-hall.example/events/harbour-lights",
+        "name": "Harbour Lights Concert",
+        "description": "<p>Brass and strings on the harbour steps, with a lantern walk after the last piece. The hall opens at 19:00 for anyone who wants a seat inside.</p>",
+        "startDate": "2027-07-10T19:30:00-07:00",
+        "endDate": "2027-07-10T21:30:00-07:00",
+        "eventStatus": "https://schema.org/EventScheduled",
+        "url": "/events/harbour-lights",
+        "location": {
+          "@type": "Place",
+          "name": "Harbourside Hall",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "100 Wharf Lane",
+            "addressLocality": "Victoria",
+            "addressRegion": "BC",
+            "addressCountry": "CA"
+          },
+          "geo": { "@type": "GeoCoordinates", "latitude": 48.4236, "longitude": -123.3702 }
+        },
+        "organizer": { "@type": "Organization", "name": "Harbourside Hall Society" }
+      },
+      {
+        "@type": "ComedyEvent",
+        "@id": "https://harbourside-hall.example/events/late-laughs",
+        "name": "Late Laughs: Improv Night",
+        "description": "Short scenes built from the audience's suggestions.",
+        "startDate": "2027-07-16T21:00:00-07:00",
+        "endDate": "2027-07-16T22:30:00-07:00",
+        "url": "https://harbourside-hall.example/events/late-laughs",
+        "location": {
+          "@type": "Place",
+          "name": "Harbourside Hall, small stage",
+          "address": "100 Wharf Lane, Victoria, BC",
+          "geo": { "@type": "GeoCoordinates", "latitude": "48.4236", "longitude": "-123.3702" }
+        }
+      },
+      {
+        "@type": "EducationEvent",
+        "@id": "https://harbourside-hall.example/events/stage-lighting-101",
+        "name": "Stage Lighting 101 (Online)",
+        "description": "How a small venue lights a show on a tight budget.",
+        "startDate": "2027-07-20T18:00:00-07:00",
+        "endDate": "2027-07-20T19:00:00-07:00",
+        "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+        "location": { "@type": "VirtualLocation", "url": "https://harbourside-hall.example/live" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <h1>Harbourside Hall</h1>
+  <p>Every organisation, venue, event on this page is made up, for eventken's tests and demo.</p>
+</body>
+</html>

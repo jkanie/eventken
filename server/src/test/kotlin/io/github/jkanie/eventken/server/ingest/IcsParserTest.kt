@@ -1,5 +1,6 @@
 package io.github.jkanie.eventken.server.ingest
 
+import io.github.jkanie.eventken.server.support.FixedClock
 import io.github.jkanie.eventken.server.support.Fixtures
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -10,12 +11,14 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class IcsParserTest {
-    private val parser = IcsParser()
+    // The sample feeds hold July 2027 events. Recurring events expand from this day for 12 months.
+    private val parser = IcsParser(clock = FixedClock(Instant.parse("2027-07-01T00:00:00Z")))
     private val arts by lazy { parser.parse(Fixtures.text("feeds/lantern-hill-arts.ics")).associateBy { it.externalId } }
 
     @Test
     fun readsEveryEventOfTheSampleFeed() {
-        assertEquals(5, arts.size)
+        // 4 events plus Pottery Basics, a weekly class with COUNT=4.
+        assertEquals(8, arts.size)
         assertEquals(3, parser.parse(Fixtures.text("feeds/saltwater-running-club.ics")).size)
     }
 
@@ -71,11 +74,18 @@ class IcsParserTest {
     }
 
     @Test
-    fun recurringEventsGiveTheirFirstDate() {
-        val pottery = arts.getValue("pottery-basics-2027@lantern-hill.example")
-        assertEquals("Pottery Basics, Week 1", pottery.title)
-        assertEquals(Instant.parse("2027-07-07T01:00:00Z"), pottery.startsAt)
-        assertEquals(listOf("arts", "learning"), pottery.categories)
+    fun aWeeklyClassGivesAnEventPerWeek() {
+        val pottery = arts.values.filter { it.externalId.startsWith("pottery-basics-2027@lantern-hill.example#") }
+        // Tuesdays 18:00 to 20:00 in Vancouver (PDT) are 01:00 to 03:00 UTC on Wednesdays.
+        assertEquals(
+            listOf("20270707T010000Z", "20270714T010000Z", "20270721T010000Z", "20270728T010000Z"),
+            pottery.map { it.externalId.substringAfter('#') },
+        )
+        assertEquals(
+            listOf("2027-07-07T03:00:00Z", "2027-07-14T03:00:00Z", "2027-07-21T03:00:00Z", "2027-07-28T03:00:00Z"),
+            pottery.map { it.endsAt.toString() },
+        )
+        assertTrue(pottery.all { it.title == "Pottery Basics, Week 1" && it.categories == listOf("arts", "learning") })
     }
 
     @Test

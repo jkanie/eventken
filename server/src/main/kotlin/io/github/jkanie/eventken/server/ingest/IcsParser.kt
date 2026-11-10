@@ -7,6 +7,7 @@ import java.time.Period
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -16,11 +17,17 @@ import kotlin.time.Instant
  * event calendars use: line folding, quoted parameters, escaped text, TZID,
  * all-day dates, DURATION, GEO, CATEGORIES, STATUS. VALARM blocks are skipped.
  * ATTENDEE lines and organiser e-mail addresses are dropped on purpose, so no
- * personal contact data reaches the database. A recurring event (RRULE) gives
- * its first date only, see ROADMAP.md item 1.
+ * personal contact data reaches the database.
+ *
+ * A recurring event (RRULE, RDATE, EXDATE) becomes 1 event per occurrence that
+ * has not ended yet and starts within the next 12 months, each with the
+ * external id UID#start (start in UTC, or the date of an all-day event). A
+ * changed instance (RECURRENCE-ID) replaces the occurrence it names. A rule
+ * that [RecurrenceRule] cannot expand keeps its first date only.
  */
 class IcsParser(
     private val defaultZone: ZoneId = ZoneOffset.UTC,
+    private val clock: Clock = Clock.System,
 ) {
     data class Property(
         val name: String,
@@ -34,7 +41,7 @@ class IcsParser(
             throw FeedParseException("Not an iCalendar file: BEGIN:VCALENDAR is missing.")
         }
         var calendarZone = defaultZone
-        val events = mutableListOf<ParsedEvent>()
+        val components = mutableListOf<List<Property>>()
         var current: MutableList<Property>? = null
         var nestedDepth = 0
 
@@ -51,7 +58,7 @@ class IcsParser(
                 }
 
                 property.name == "END" && property.value.equals("VEVENT", ignoreCase = true) && current != null -> {
-                    toEvent(current, calendarZone)?.let(events::add)
+                    components += current
                     current = null
                 }
 
@@ -68,7 +75,109 @@ class IcsParser(
                 }
             }
         }
+        return expand(components, calendarZone)
+    }
+
+    /** Turns each VEVENT into events: 1, or 1 per occurrence in the window for a recurring event. */
+    private fun expand(
+        components: List<List<Property>>,
+        calendarZone: ZoneId,
+    ): List<ParsedEvent> {
+        val now = clock.now()
+        val horizon = now.toJava().atZone(ZoneOffset.UTC).plusMonths(WINDOW_MONTHS)
+        // The occurrences each UID's changed instances replace.
+        val replaced =
+            components
+                .mapNotNull { props ->
+                    val uid = props.uid() ?: return@mapNotNull null
+                    val id = props.firstOrNull { it.name == "RECURRENCE-ID" } ?: return@mapNotNull null
+                    parseDateValue(id, calendarZone)?.let { uid to occurrenceKey(it) }
+                }.groupBy({ it.first }, { it.second })
+                .mapValues { it.value.toSet() }
+
+        val events = mutableListOf<ParsedEvent>()
+        for (props in components) {
+            val event = toEvent(props, calendarZone) ?: continue
+            val uid = props.uid()
+            val rrule = props.firstOrNull { it.name == "RRULE" }
+            val rdates = props.filter { it.name == "RDATE" }
+            if (uid == null || props.any { it.name == "RECURRENCE-ID" } || (rrule == null && rdates.isEmpty())) {
+                events += event
+                continue
+            }
+            val start = props.firstOrNull { it.name == "DTSTART" }?.let { parseDateValue(it, calendarZone) } ?: continue
+            val rule = rrule?.let { RecurrenceRule.parse(it.value) }
+            if (rrule != null && rule == null) {
+                // A rule part that is not expanded: keep the first date, as a calendar without RRULE support would.
+                events += event
+                continue
+            }
+            val zone = start.zone ?: ZoneOffset.UTC
+            val first = start.instant.toJava().atZone(zone)
+            val starts =
+                (rule?.occurrences(first, horizon) ?: sequenceOf(first))
+                    .take(MAX_OCCURRENCES)
+                    .toMutableList()
+            for (rdate in rdates) {
+                starts += dateValues(rdate, calendarZone).map { it.instant.toJava().atZone(zone) }
+            }
+            val excluded = props.filter { it.name == "EXDATE" }.flatMap { dateValues(it, calendarZone) }
+            val excludedKeys = excluded.map(::occurrenceKey).toSet()
+            val excludedDates =
+                excluded
+                    .filter { it.allDay }
+                    .map {
+                        it.instant
+                            .toJava()
+                            .atZone(it.zone ?: zone)
+                            .toLocalDate()
+                    }.toSet()
+            val length = event.endsAt?.let { it - event.startsAt }
+            val skip = replaced[uid].orEmpty()
+            starts
+                .distinct()
+                .sorted()
+                .asSequence()
+                .map { DateValue(it.toInstant().toKotlin(), start.allDay, start.zone) to it }
+                .filter { (value, at) ->
+                    occurrenceKey(value) !in excludedKeys && at.toLocalDate() !in excludedDates && occurrenceKey(value) !in skip
+                }.filter { (value, at) ->
+                    val end = length?.let { value.instant + it } ?: value.instant
+                    end >= now && !at.isAfter(horizon)
+                }.take(MAX_OCCURRENCES)
+                .forEach { (value, _) ->
+                    events +=
+                        event.copy(
+                            externalId = "$uid#${occurrenceKey(value)}",
+                            startsAt = value.instant,
+                            endsAt = length?.let { value.instant + it },
+                        )
+                }
+        }
         return events
+    }
+
+    private fun List<Property>.uid(): String? = firstOrNull { it.name == "UID" }?.value?.trim()?.ifEmpty { null }
+
+    /** Every value of a comma list such as EXDATE:20270713T180000,20270720T180000, read with the property's parameters. */
+    private fun dateValues(
+        property: Property,
+        calendarZone: ZoneId,
+    ): List<DateValue> =
+        property.value
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && '/' !in it } // RDATE periods (start/end) are not read
+            .mapNotNull { parseDateValue(property.copy(value = it), calendarZone) }
+
+    /** The start of an occurrence as its id part: the UTC date-time, or the date of an all-day event. */
+    private fun occurrenceKey(value: DateValue): String {
+        val at = value.instant.toJava()
+        return if (value.allDay) {
+            at.atZone(value.zone ?: ZoneOffset.UTC).toLocalDate().format(BASIC_DATE)
+        } else {
+            at.atZone(ZoneOffset.UTC).toLocalDateTime().format(BASIC_DATE_TIME) + "Z"
+        }
     }
 
     private fun toEvent(
@@ -94,10 +203,12 @@ class IcsParser(
                 .map { unescape(it).trim().lowercase() }
                 .filter { it.isNotEmpty() }
                 .distinct()
-        // A changed instance of a recurring event repeats the UID and adds RECURRENCE-ID.
+        // A changed instance of a recurring event repeats the UID and adds RECURRENCE-ID, the start it replaces.
         val uid =
             first("UID")?.value?.trim()?.ifEmpty { null }?.let { id ->
-                first("RECURRENCE-ID")?.value?.trim()?.let { "$id#$it" } ?: id
+                first("RECURRENCE-ID")?.let { rid ->
+                    parseDateValue(rid, calendarZone)?.let { "$id#${occurrenceKey(it)}" } ?: "$id#${rid.value.trim()}"
+                } ?: id
             }
 
         return ParsedEvent(
@@ -172,6 +283,12 @@ class IcsParser(
     }
 
     companion object {
+        /** How far ahead the occurrences of a recurring event go. */
+        const val WINDOW_MONTHS = 12L
+
+        /** At most this many occurrences of 1 recurring event, such as a daily event: 366 fit in the window. */
+        const val MAX_OCCURRENCES = 400
+
         private val BASIC_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
         private val BASIC_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
 
@@ -283,3 +400,5 @@ class IcsParser(
 }
 
 internal fun java.time.Instant.toKotlin(): Instant = Instant.fromEpochSeconds(epochSecond, nano)
+
+internal fun Instant.toJava(): java.time.Instant = java.time.Instant.ofEpochSecond(epochSeconds, nanosecondsOfSecond.toLong())

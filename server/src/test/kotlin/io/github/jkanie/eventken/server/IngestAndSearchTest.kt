@@ -41,15 +41,16 @@ class IngestAndSearchTest {
     fun theSameEventFromAnIcsFeedAndAJsonLdPageIsStoredOnce() =
         runBlocking {
             val lines = seed(services, Fixtures.dir)
-            assertEquals(listOf(5, 3, 3, 4), lines.map { it.parsed }, "the second seed parses the same files")
+            assertEquals(listOf(8, 3, 3, 4), lines.map { it.parsed }, "the second seed parses the same files")
             assertTrue(lines.all { it.result.created == 0 && it.result.merged == 0 && it.result.updated == 0 }, "and changes nothing")
 
             TestDatabase.reset()
             val fresh = seed(services, Fixtures.dir)
-            assertEquals(listOf(5, 3, 2, 3), fresh.map { it.result.created })
+            // The weekly pottery class gives 4 events, 1 per week.
+            assertEquals(listOf(8, 3, 2, 3), fresh.map { it.result.created })
             assertEquals(listOf(0, 0, 1, 1), fresh.map { it.result.merged })
-            assertEquals(11, search(SearchQuery()).total, "13 events, 2 of them cancelled")
-            assertEquals(13, search(SearchQuery(includeCancelled = true)).total)
+            assertEquals(14, search(SearchQuery()).total, "16 events, 2 of them cancelled")
+            assertEquals(16, search(SearchQuery(includeCancelled = true)).total)
         }
 
     @Test
@@ -77,7 +78,8 @@ class IngestAndSearchTest {
         assertEquals(listOf("Late Laughs: Improv Night", "Harbour Lights Summer Concert"), near.items.map { it.title })
 
         val wider = search(SearchQuery(latitude = hallLat, longitude = hallLon, radiusKm = 2.0, sort = SortOrder.DISTANCE, limit = 100))
-        assertEquals(5, wider.total)
+        // 2 events at the hall, 2 more within 2 km, and 4 weeks of pottery at Lantern Hill Studios.
+        assertEquals(8, wider.total)
         wider.items.forEach { event ->
             val expected = Geo.haversineKm(hallLat, hallLon, event.latitude!!, event.longitude!!)
             assertEquals(expected, event.distanceKm!!, 0.01, event.title)
@@ -89,7 +91,7 @@ class IngestAndSearchTest {
     @Test
     fun aLocationWithoutRadiusAddsDistancesButKeepsEveryEvent() {
         val page = search(SearchQuery(latitude = hallLat, longitude = hallLon, sort = SortOrder.DISTANCE, limit = 100))
-        assertEquals(11, page.total)
+        assertEquals(14, page.total)
         assertNull(page.items.last().distanceKm, "events without a place come last")
         assertNotNull(page.items.first().distanceKm)
     }
@@ -127,8 +129,8 @@ class IngestAndSearchTest {
     @Test
     fun pagesCountTheWholeResult() {
         val page = search(SearchQuery(sort = SortOrder.START, limit = 5, offset = 10))
-        assertEquals(11, page.total)
-        assertEquals(1, page.items.size)
+        assertEquals(14, page.total)
+        assertEquals(4, page.items.size)
         assertEquals("Maple Commons Night Market", titles(SearchQuery(sort = SortOrder.START)).first())
     }
 
@@ -148,7 +150,7 @@ class IngestAndSearchTest {
             val events = services.ingest.parse(feed, Fixtures.text("feeds/lantern-hill-arts.ics"), feed.url)
             val result = services.ingest.store(feed, events.filterNot { it.title.startsWith("Jazz") })
             assertEquals(1, result.removed)
-            assertEquals(4, result.unchanged)
+            assertEquals(7, result.unchanged)
             assertTrue(titles(SearchQuery(text = "jazz")).isEmpty())
         }
 

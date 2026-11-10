@@ -172,16 +172,16 @@ class ApiTest {
                 assertEquals(HttpStatusCode.Conflict, duplicate.status)
 
                 val report = eventken.ingestNow(token)
-                assertEquals(listOf(5, 3, 3, 4, 0), report.feeds.map { it.parsed })
+                assertEquals(listOf(8, 3, 3, 4, 0), report.feeds.map { it.parsed })
                 assertEquals(listOf(0, 0, 1, 1, 0), report.feeds.map { it.merged })
                 assertEquals("error: robots.txt of 127.0.0.1 does not allow /private/members-only.html.", report.feeds.last().status)
 
                 val page = eventken.search(SearchQuery(categories = listOf("victoria"), limit = 100))
-                assertEquals(11, page.total)
+                assertEquals(14, page.total)
 
                 val feeds = eventken.feeds(token)
-                assertEquals("ok: 5 events", feeds.first().lastStatus)
-                assertEquals(5, feeds.first().eventCount)
+                assertEquals("ok: 8 events", feeds.first().lastStatus)
+                assertEquals(8, feeds.first().eventCount)
 
                 // The fixture server sends no ETag, so a second run fetches again and finds nothing new.
                 val again = eventken.ingestNow(token)

@@ -8,6 +8,7 @@ The name: "ken" is the range of what you can see and know (Old English *cennan*,
 
 - Reads 2 kinds of source, only from URLs an admin adds:
   - iCalendar (`.ics`) files as RFC 5545 describes them: folded lines, quoted parameters, escaped text, `TZID`, all-day dates, `DURATION`, `GEO`, `CATEGORIES`, `STATUS:CANCELLED`.
+  - Recurring events: `RRULE` (`DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY` with `INTERVAL`, `COUNT`, `UNTIL`, `WKST`, `BYDAY` such as `2TU` or `-1FR`, `BYMONTHDAY`, `BYMONTH`), `RDATE`, `EXDATE`. Each occurrence that has not ended and starts within the next 12 months becomes its own listing, with the external id `UID#start` (the start in UTC, or the date of an all-day event). A changed instance (`RECURRENCE-ID`) replaces the occurrence it names. Each occurrence keeps the wall-clock time of the first one in its time zone, so a class at 18:00 stays at 18:00 when daylight saving time starts or ends.
   - Web pages with schema.org `Event` objects in `<script type="application/ld+json">` tags: single objects, arrays, `@graph` lists, every Event subtype (`MusicEvent` becomes the category `music`, `SportsEvent` becomes `sport`), online events.
 - Merges the same event from 2 feeds into 1 search result. 2 listings match when they pass 3 tests:
   - They start within 30 minutes of each other.
@@ -90,7 +91,7 @@ The queries that matter here are PostgreSQL SQL: `websearch_to_tsquery` with wei
 
 ### Why haversine SQL, not earthdistance or PostGIS
 
-The distance is the haversine formula in plain SQL, the same formula the apps use (`shared/.../geo/Geo.kt`), so both sides show the same number. It needs no extension, so it runs on any PostgreSQL, including managed services that limit extensions. A latitude and longitude box narrows rows first through a B-tree index. The spherical model is correct to within 0.5% ([haversine formula](https://en.wikipedia.org/wiki/Haversine_formula)), which is fine for "how far is this event". ROADMAP.md item 4 plans a spatial index for large data sets.
+The distance is the haversine formula in plain SQL, the same formula the apps use (`shared/.../geo/Geo.kt`), so both sides show the same number. It needs no extension, so it runs on any PostgreSQL, including managed services that limit extensions. A latitude and longitude box narrows rows first through a B-tree index. The spherical model is correct to within 0.5% ([haversine formula](https://en.wikipedia.org/wiki/Haversine_formula)), which is fine for "how far is this event". ROADMAP.md item 3 plans a spatial index for large data sets.
 
 ## Set-up
 
@@ -189,7 +190,7 @@ A bad query gets 400 with every problem in 1 message, for example `{"error":"inv
 
 - Only admins add feed URLs, and the server fetches nothing else.
 - The address guard (`server/.../net/TargetGuard.kt`) refuses private, loopback, link-local, shared, documentation, benchmarking, multicast, reserved ranges for IPv4 and IPv6, plus IPv6 forms that carry an IPv4 address (`::ffff:127.0.0.1`, NAT64, 6to4). It refuses a host when any of its addresses is blocked. OkHttp then connects only to the addresses the guard approved, so DNS cannot change the answer between check and connection. Redirects are followed by hand, at most 5, each through the guard and the robots.txt of its own site.
-- Feed fetches skip any HTTP proxy, because a proxy would resolve names itself, out of the guard's sight. ROADMAP.md item 10 plans proxy support that keeps the guard.
+- Feed fetches skip any HTTP proxy, because a proxy would resolve names itself, out of the guard's sight. ROADMAP.md item 9 plans proxy support that keeps the guard.
 - Limits: 5 MiB per feed, 5,000 events per feed, 60 seconds per fetch. A feed over a limit fails, and the feed status records the error.
 - The token check runs in constant time (`MessageDigest.isEqual`).
 - No attendee data is stored. The iCalendar parser drops `ATTENDEE` lines and keeps only the organiser's display name, never the e-mail address. A test checks the database for addresses after a seed.
@@ -209,7 +210,7 @@ EVENTKEN_TEST_JDBC_URL=jdbc:postgresql://localhost:5432/eventken ./gradlew :serv
 
 | Module | Tests | What they cover |
 |---|---|---|
-| server | 116 | iCalendar and JSON-LD parsing of the sample feeds, matching, merging, the address guard, robots.txt, the fetcher against a local HTTP server (redirects, 304, size limit, robots.txt), ingest and search against PostgreSQL, the HTTP API through the shared client. |
+| server | 124 | iCalendar and JSON-LD parsing of the sample feeds, recurring rules (a moved and a cancelled week, a daylight-saving change, monthly and yearly rules, the 12-month window), matching, merging, the address guard, robots.txt, the fetcher against a local HTTP server (redirects, 304, size limit, robots.txt), ingest and search against PostgreSQL, the HTTP API through the shared client. |
 | shared on the JVM | 37 | Query rules, reminder rules across time zones, the API client against a mock engine, the SQLite cache, the screen state models, date and distance text. |
 | desktopApp | 4 | The real Compose screens, rendered off-screen against a fake server: search, open, save, the saved list, the organiser screen with the token. |
 | shared on Android | 28 | The common tests again, on the Android target, so the shared code is checked on both platforms. |
@@ -227,7 +228,7 @@ fixtures/     Made-up sample feeds: 2 .ics files, 2 HTML pages with JSON-LD, 1 p
 
 ## Known limits
 
-- A recurring event (`RRULE`) shows its first date only. ROADMAP.md item 1 expands the rule.
+- A recurring rule with any of the parts `BYSETPOS`, `BYWEEKNO`, `BYYEARDAY`, `BYHOUR`, `BYMINUTE`, `BYSECOND`, or with a `FREQ` finer than `DAILY`, is not expanded: the event shows its first date only. `RDATE` periods (start/end) are not read.
 - `TZID` values must be IANA names, such as `America/Vancouver`. `VTIMEZONE` blocks are read past, not interpreted.
 - Ingest writes take 1 PostgreSQL advisory lock, so 2 server instances never store at the same time. Fetching still runs in parallel.
 

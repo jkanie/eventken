@@ -37,7 +37,7 @@ class IngestService(
     private val clock: Clock = Clock.System,
 ) {
     private val log = LoggerFactory.getLogger(IngestService::class.java)
-    private val icsParser = IcsParser(defaultZone)
+    private val icsParser = IcsParser(defaultZone, clock)
     private val jsonLdParser = JsonLdParser(defaultZone)
 
     private sealed interface Fetched {

@@ -1,6 +1,7 @@
 package io.github.jkanie.eventken.server
 
 import io.github.jkanie.eventken.server.dev.seed
+import io.github.jkanie.eventken.server.ingest.IcsParser
 import io.github.jkanie.eventken.server.support.FixedClock
 import io.github.jkanie.eventken.server.support.FixtureServer
 import io.github.jkanie.eventken.server.support.Fixtures
@@ -79,6 +80,29 @@ class ApiTest {
                     """lat and lon go together: give both or neither. lat must be between -90 and 90. radiusKm needs lat and lon."}""",
                 response.bodyAsText(),
             )
+        }
+
+    @Test
+    fun anEventDownloadsAsAnIcsFile() =
+        api { services, eventken ->
+            seed(services, Fixtures.dir)
+            val concert =
+                eventken
+                    .search(SearchQuery.builder().text("concert").build())
+                    .items
+                    .single()
+            val response = client.get("/api/events/${concert.id}/calendar.ics")
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals("text/calendar; charset=utf-8", response.headers[HttpHeaders.ContentType])
+            assertEquals("attachment; filename=event-${concert.id}.ics", response.headers[HttpHeaders.ContentDisposition])
+            val event = IcsParser(clock = clock).parse(response.bodyAsText()).single()
+            assertEquals("event-${concert.id}@localhost", event.externalId)
+            assertEquals(concert.title, event.title)
+            assertEquals(concert.startsAt, event.startsAt)
+            assertEquals(concert.endsAt, event.endsAt)
+
+            assertEquals(HttpStatusCode.NotFound, client.get("/api/events/999/calendar.ics").status)
+            assertEquals(HttpStatusCode.NotFound, client.get("/api/events/abc/calendar.ics").status)
         }
 
     @Test

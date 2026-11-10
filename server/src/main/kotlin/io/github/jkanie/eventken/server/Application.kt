@@ -3,6 +3,7 @@ package io.github.jkanie.eventken.server
 import io.github.jkanie.eventken.server.api.AdminAuth
 import io.github.jkanie.eventken.server.db.prepare
 import io.github.jkanie.eventken.server.db.single
+import io.github.jkanie.eventken.server.events.IcsWriter
 import io.github.jkanie.eventken.server.feeds.DuplicateFeedException
 import io.github.jkanie.eventken.server.ingest.IngestScheduler
 import io.github.jkanie.eventken.server.net.TargetRefusedException
@@ -10,7 +11,9 @@ import io.github.jkanie.eventken.shared.model.ApiError
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.search.InvalidSearchQuery
 import io.github.jkanie.eventken.shared.search.SearchQuery
+import io.ktor.http.ContentDisposition
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -20,7 +23,9 @@ import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.plugins.swagger.swaggerUI
+import io.ktor.server.request.host
 import io.ktor.server.request.receive
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingCall
@@ -102,6 +107,18 @@ fun Application.eventken(
                 val id = call.longParameter("id") ?: return@get call.notFound("event")
                 val event = services.events.find(id) ?: return@get call.notFound("event")
                 call.respond(event)
+            }
+            get("/events/{id}/calendar.ics") {
+                val id = call.longParameter("id") ?: return@get call.notFound("event")
+                val event = services.events.find(id) ?: return@get call.notFound("event")
+                call.response.header(
+                    HttpHeaders.ContentDisposition,
+                    ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, "event-$id.ics").toString(),
+                )
+                call.respondText(
+                    IcsWriter.write(event, call.request.host(), services.clock.now()),
+                    ContentType.parse("text/calendar; charset=utf-8"),
+                )
             }
             get("/categories") {
                 call.respond(services.events.categories(services.clock.now()))

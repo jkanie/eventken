@@ -80,6 +80,23 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiError" }
+  /api/events/{id}/calendar.ics:
+    get:
+      tags: [search]
+      summary: 1 event as an iCalendar file, to add it to a calendar.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: An iCalendar (RFC 5545) file with 1 VEVENT, sent as an attachment named event-ID.ics.
+          content:
+            text/calendar:
+              schema: { type: string }
+        "404":
+          description: No such event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
   /api/categories:
     get:
       tags: [search]

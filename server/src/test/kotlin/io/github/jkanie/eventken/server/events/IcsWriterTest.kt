@@ -100,4 +100,38 @@ class IcsWriterTest {
         assertEquals("a\\\\b\\;c\\,d\\ne\\nf", IcsWriter.escape("a\\b;c,d\ne\r\nf"))
         assertEquals("plain: text", IcsWriter.escape("plain: text"))
     }
+
+    @Test
+    fun severalEventsGoInOneCalendar() {
+        val market =
+            EventDetail(
+                EventSummary(
+                    id = 9,
+                    title = "Maple Commons market",
+                    startsAt = Instant.parse("2027-07-12T07:00:00Z"),
+                    endsAt = Instant.parse("2027-07-13T07:00:00Z"),
+                    allDay = true,
+                    timeZone = "America/Vancouver",
+                ),
+            )
+        val text = IcsWriter.writeAll(listOf(concert, market), "localhost", now)
+        assertEquals(1, Regex("BEGIN:VCALENDAR").findAll(text).count())
+        assertTrue("X-WR-TIMEZONE:America/Vancouver\r\n" in text)
+        val events = parser.parse(text)
+        assertEquals(listOf("event-7@localhost", "event-9@localhost"), events.map { it.externalId })
+        assertEquals(market.summary.startsAt, events[1].startsAt)
+
+        val mixed =
+            IcsWriter.writeAll(
+                listOf(concert, market.copy(summary = market.summary.copy(timeZone = "Europe/Paris"))),
+                "localhost",
+                now,
+            )
+        assertTrue("X-WR-TIMEZONE" !in mixed)
+        assertTrue("DTSTART;VALUE=DATE:20270712\r\n" in mixed)
+
+        val empty = IcsWriter.writeAll(emptyList(), "localhost", now)
+        assertTrue(empty.startsWith("BEGIN:VCALENDAR\r\n") && empty.endsWith("END:VCALENDAR\r\n"))
+        assertTrue("BEGIN:VEVENT" !in empty)
+    }
 }

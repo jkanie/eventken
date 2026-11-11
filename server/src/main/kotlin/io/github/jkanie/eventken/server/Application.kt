@@ -103,6 +103,24 @@ fun Application.eventken(
                     }
                 call.respond(services.events.search(query, services.clock.now()))
             }
+            get("/events/calendar.ics") {
+                val query =
+                    SearchQuery.fromParameters {
+                        call.request.queryParameters
+                            .getAll(it)
+                            .orEmpty()
+                    }
+                val page = services.events.search(query, services.clock.now())
+                val details = page.items.mapNotNull { services.events.find(it.id) }
+                call.response.header(
+                    HttpHeaders.ContentDisposition,
+                    ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, "events.ics").toString(),
+                )
+                call.respondText(
+                    IcsWriter.writeAll(details, call.request.host(), services.clock.now()),
+                    ContentType.parse("text/calendar; charset=utf-8"),
+                )
+            }
             get("/events/{id}") {
                 val id = call.longParameter("id") ?: return@get call.notFound("event")
                 val event = services.events.find(id) ?: return@get call.notFound("event")

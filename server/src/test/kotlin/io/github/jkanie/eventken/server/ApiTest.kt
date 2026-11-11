@@ -106,6 +106,24 @@ class ApiTest {
         }
 
     @Test
+    fun searchResultsDownloadAsOneIcsFile() =
+        api { services, eventken ->
+            seed(services, Fixtures.dir)
+            val page = eventken.search(SearchQuery.builder().page(limit = 5, offset = 0).build())
+            assertTrue(page.items.size >= 2, "the sample feeds need 2 or more events for this test")
+            val response = client.get("/api/events/calendar.ics?limit=5")
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals("attachment; filename=events.ics", response.headers[HttpHeaders.ContentDisposition])
+            val events = IcsParser(clock = clock).parse(response.bodyAsText())
+            assertEquals(page.items.map { "event-${it.id}@localhost" }, events.map { it.externalId })
+            assertEquals(page.items.map { it.title }, events.map { it.title })
+
+            val one = IcsParser(clock = clock).parse(client.get("/api/events/calendar.ics?limit=1").bodyAsText())
+            assertEquals(listOf(page.items.first().title), one.map { it.title })
+            assertEquals(HttpStatusCode.BadRequest, client.get("/api/events/calendar.ics?sort=sideways").status)
+        }
+
+    @Test
     fun unknownEvents() =
         api { _, eventken ->
             assertEquals(HttpStatusCode.NotFound, client.get("/api/events/999").status)

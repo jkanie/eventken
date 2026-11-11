@@ -80,6 +80,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiError" }
+  /api/events/calendar.ics:
+    get:
+      tags: [search]
+      summary: 1 page of search results as 1 iCalendar file, to add them to a calendar.
+      description: Takes the same query parameters as /api/events (q, lat, lon, radiusKm, from, to, category, sort, limit, offset, includeCancelled). Each event keeps its description.
+      responses:
+        "200":
+          description: An iCalendar (RFC 5545) file with 1 VEVENT per event in the page, sent as an attachment named events.ics.
+          content:
+            text/calendar:
+              schema: { type: string }
+        "400":
+          description: The query is not valid. The message lists every problem.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
   /api/events/{id}/calendar.ics:
     get:
       tags: [search]

@@ -95,6 +95,50 @@ class EventkenClientTest {
         }
 
     @Test
+    fun readsOneFeedWithTheToken() =
+        runTest {
+            val body =
+                """{"id":4,"url":"https://example.org/events.ics","kind":"ICAL","createdAt":"2026-06-01T00:00:00Z",""" +
+                    """"lastStatus":"ok: 8 events","eventCount":8}"""
+            val feed = client(body = body).feed("example-token", 4)
+
+            assertEquals(8, feed.eventCount)
+            assertEquals("ok: 8 events", feed.lastStatus)
+            val request = requests.single()
+            assertEquals("/api/admin/feeds/4", request.url.encodedPath)
+            assertEquals("Bearer example-token", request.headers[HttpHeaders.Authorization])
+
+            val missing =
+                assertFailsWith<EventkenApiException> {
+                    client(HttpStatusCode.NotFound, """{"error":"not_found","message":"No such feed."}""").feed("t", 9)
+                }
+            assertEquals(HttpStatusCode.NotFound, missing.status)
+        }
+
+    @Test
+    fun calendarsComeBackAsTheServersText() =
+        runTest {
+            val ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"
+            val one = client(body = ics).eventCalendar(7)
+            assertEquals(ics, one)
+            assertEquals("/api/events/7/calendar.ics", requests.last().url.encodedPath)
+
+            val all = client(body = ics).calendar(SearchQuery.builder().text("market").build())
+            assertEquals(ics, all)
+            val url = requests.last().url
+            assertEquals("/api/events/calendar.ics", url.encodedPath)
+            assertEquals("market", url.parameters["q"])
+
+            assertFailsWith<IllegalArgumentException> { client(body = ics).calendar(SearchQuery(radiusKm = 3.0)) }
+            assertEquals(2, requests.size)
+            val error =
+                assertFailsWith<EventkenApiException> {
+                    client(HttpStatusCode.NotFound, """{"error":"not_found","message":"No such event."}""").eventCalendar(99)
+                }
+            assertEquals("No such event.", error.message)
+        }
+
+    @Test
     fun deleteAcceptsAnEmptyBody() =
         runTest {
             client(HttpStatusCode.NoContent, "").deleteFeed("t", 4)

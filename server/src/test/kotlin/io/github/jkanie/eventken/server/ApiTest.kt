@@ -8,7 +8,6 @@ import io.github.jkanie.eventken.server.support.Fixtures
 import io.github.jkanie.eventken.server.support.TestDatabase
 import io.github.jkanie.eventken.shared.api.EventkenApiException
 import io.github.jkanie.eventken.shared.api.EventkenClient
-import io.github.jkanie.eventken.shared.model.Feed
 import io.github.jkanie.eventken.shared.model.FeedKind
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.search.SearchQuery
@@ -23,7 +22,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -102,6 +100,8 @@ class ApiTest {
             assertEquals(concert.title, event.title)
             assertEquals(concert.startsAt, event.startsAt)
             assertEquals(concert.endsAt, event.endsAt)
+            // The shared client gives the same text.
+            assertEquals(response.bodyAsText(), eventken.eventCalendar(concert.id))
 
             assertEquals(HttpStatusCode.NotFound, client.get("/api/events/999/calendar.ics").status)
             assertEquals(HttpStatusCode.NotFound, client.get("/api/events/abc/calendar.ics").status)
@@ -120,6 +120,7 @@ class ApiTest {
             assertEquals(page.items.map { "event-${it.id}@localhost" }, events.map { it.externalId })
             assertEquals(page.items.map { it.title }, events.map { it.title })
 
+            assertEquals(response.bodyAsText(), eventken.calendar(SearchQuery.builder().page(limit = 5, offset = 0).build()))
             val one = IcsParser(clock = clock).parse(client.get("/api/events/calendar.ics?limit=1").bodyAsText())
             assertEquals(listOf(page.items.first().title), one.map { it.title })
             assertEquals(HttpStatusCode.BadRequest, client.get("/api/events/calendar.ics?sort=sideways").status)
@@ -228,9 +229,7 @@ class ApiTest {
                 assertEquals(8, feeds.first().eventCount)
 
                 // 1 feed reads the same as its row in the list, and needs the token like the list.
-                val one = client.get("/api/admin/feeds/${feeds.first().id}") { bearerAuth(token) }
-                assertEquals(HttpStatusCode.OK, one.status)
-                assertEquals(feeds.first(), Json.decodeFromString<Feed>(one.bodyAsText()))
+                assertEquals(feeds.first(), eventken.feed(token, feeds.first().id))
                 assertEquals(HttpStatusCode.Unauthorized, client.get("/api/admin/feeds/${feeds.first().id}").status)
                 assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/999") { bearerAuth(token) }.status)
                 assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/abc") { bearerAuth(token) }.status)

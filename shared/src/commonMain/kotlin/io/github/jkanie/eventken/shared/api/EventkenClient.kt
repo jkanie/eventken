@@ -65,7 +65,22 @@ class EventkenClient(
 
     suspend fun categories(): List<CategoryCount> = http.get("api/categories").unwrap()
 
+    /** 1 event as an iCalendar file (RFC 5545), the text that the server sends. */
+    suspend fun eventCalendar(id: Long): String = http.get("api/events/$id/calendar.ics").text()
+
+    /** Every event that [query] finds, up to its limit, as 1 iCalendar file. */
+    suspend fun calendar(query: SearchQuery): String =
+        http
+            .get("api/events/calendar.ics") {
+                query.validated().toParameters().forEach { (name, value) -> parameter(name, value) }
+            }.text()
+
     suspend fun feeds(adminToken: String): List<Feed> = http.get("api/admin/feeds") { admin(adminToken) }.unwrap()
+
+    suspend fun feed(
+        adminToken: String,
+        id: Long,
+    ): Feed = http.get("api/admin/feeds/$id") { admin(adminToken) }.unwrap()
 
     suspend fun addFeed(
         adminToken: String,
@@ -91,11 +106,20 @@ class EventkenClient(
 
     private fun HttpRequestBuilder.admin(token: String) = bearerAuth(token)
 
-    private suspend inline fun <reified T> HttpResponse.unwrap(): T {
+    private suspend fun HttpResponse.text(): String {
+        failOnError()
+        return bodyAsText()
+    }
+
+    private suspend fun HttpResponse.failOnError() {
         if (!status.isSuccess()) {
             val error = runCatching { json.decodeFromString<ApiError>(bodyAsText()) }.getOrNull()
             throw EventkenApiException(status, error)
         }
+    }
+
+    private suspend inline fun <reified T> HttpResponse.unwrap(): T {
+        failOnError()
         if (T::class == Unit::class) return Unit as T
         return body()
     }

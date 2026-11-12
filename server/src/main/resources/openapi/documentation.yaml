@@ -130,6 +130,8 @@ paths:
       tags: [admin]
       summary: Every feed with its last fetch.
       security: [{ adminToken: [] }]
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [ICAL, JSONLD] }, description: "Only feeds of this kind, in any case." }
       responses:
         "200":
           description: The feeds.
@@ -138,6 +140,11 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Feed" }
+        "400":
+          description: The kind is not ICAL or JSONLD.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
         "401": { $ref: "#/components/responses/Unauthorised" }
         "503": { $ref: "#/components/responses/AdminDisabled" }
     post:

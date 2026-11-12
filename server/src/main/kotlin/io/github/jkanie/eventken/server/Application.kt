@@ -8,6 +8,7 @@ import io.github.jkanie.eventken.server.feeds.DuplicateFeedException
 import io.github.jkanie.eventken.server.ingest.IngestScheduler
 import io.github.jkanie.eventken.server.net.TargetRefusedException
 import io.github.jkanie.eventken.shared.model.ApiError
+import io.github.jkanie.eventken.shared.model.FeedKind
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.search.InvalidSearchQuery
 import io.github.jkanie.eventken.shared.search.SearchQuery
@@ -150,7 +151,17 @@ fun Application.eventken(
             route("/admin") {
                 install(AdminAuth) { token = services.config.adminToken }
 
-                get("/feeds") { call.respond(services.feeds.list()) }
+                get("/feeds") {
+                    val feeds = services.feeds.list()
+                    val kind = call.request.queryParameters["kind"] ?: return@get call.respond(feeds)
+                    val wanted =
+                        FeedKind.entries.firstOrNull { it.name.equals(kind, ignoreCase = true) }
+                            ?: return@get call.respond(
+                                HttpStatusCode.BadRequest,
+                                ApiError("bad_request", "kind must be ${FeedKind.entries.joinToString(" or ")}."),
+                            )
+                    call.respond(feeds.filter { it.kind == wanted })
+                }
 
                 post("/feeds") {
                     val body = call.receive<NewFeed>()

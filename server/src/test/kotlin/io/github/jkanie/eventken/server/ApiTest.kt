@@ -23,6 +23,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -142,6 +147,26 @@ class ApiTest {
             val response = client.get("/api/admin/feeds")
             assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
             assertTrue(response.bodyAsText().contains("admin_disabled"))
+        }
+
+    @Test
+    fun feedsCanBeListedByKind() =
+        api { services, _ ->
+            val calendar = services.feeds.create("https://example.org/a.ics", FeedKind.ICAL, null)
+            val page = services.feeds.create("https://example.org/events", FeedKind.JSONLD, null)
+
+            suspend fun ids(query: String): List<Long> {
+                val response = client.get("/api/admin/feeds$query") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, response.status)
+                return Json.parseToJsonElement(response.bodyAsText()).jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.long }
+            }
+            assertEquals(listOf(calendar.id), ids("?kind=ICAL"))
+            assertEquals(listOf(page.id), ids("?kind=jsonld"))
+            assertEquals(listOf(calendar.id, page.id), ids(""))
+
+            val bad = client.get("/api/admin/feeds?kind=PDF") { bearerAuth(token) }
+            assertEquals(HttpStatusCode.BadRequest, bad.status)
+            assertEquals("""{"error":"bad_request","message":"kind must be ICAL or JSONLD."}""", bad.bodyAsText())
         }
 
     @Test

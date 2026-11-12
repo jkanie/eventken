@@ -180,6 +180,7 @@ All settings are environment variables, so no secret has to live in a file. `.en
 | `GET /api/categories` | anyone | Categories of events that have not ended, with counts. |
 | `GET /api/admin/feeds` | admin | Feeds with their last fetch status. |
 | `POST /api/admin/feeds` | admin | Add a feed: `{"url": "...", "kind": "ICAL" or "JSONLD", "defaultCategory": "..."}`. |
+| `GET /api/admin/feeds/{id}` | admin | 1 feed with its last fetch status, as in the list. |
 | `DELETE /api/admin/feeds/{id}` | admin | Remove a feed with its listings, then the events no other feed lists. |
 | `POST /api/admin/feeds/{id}/ingest` | admin | Fetch 1 feed now. |
 | `POST /api/admin/ingest` | admin | Fetch every feed now. |

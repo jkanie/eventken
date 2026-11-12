@@ -8,6 +8,7 @@ import io.github.jkanie.eventken.server.support.Fixtures
 import io.github.jkanie.eventken.server.support.TestDatabase
 import io.github.jkanie.eventken.shared.api.EventkenApiException
 import io.github.jkanie.eventken.shared.api.EventkenClient
+import io.github.jkanie.eventken.shared.model.Feed
 import io.github.jkanie.eventken.shared.model.FeedKind
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.search.SearchQuery
@@ -22,6 +23,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -224,6 +226,14 @@ class ApiTest {
                 val feeds = eventken.feeds(token)
                 assertEquals("ok: 8 events", feeds.first().lastStatus)
                 assertEquals(8, feeds.first().eventCount)
+
+                // 1 feed reads the same as its row in the list, and needs the token like the list.
+                val one = client.get("/api/admin/feeds/${feeds.first().id}") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, one.status)
+                assertEquals(feeds.first(), Json.decodeFromString<Feed>(one.bodyAsText()))
+                assertEquals(HttpStatusCode.Unauthorized, client.get("/api/admin/feeds/${feeds.first().id}").status)
+                assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/999") { bearerAuth(token) }.status)
+                assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/abc") { bearerAuth(token) }.status)
 
                 // The fixture server sends no ETag, so a second run fetches again and finds nothing new.
                 val again = eventken.ingestNow(token)

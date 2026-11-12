@@ -171,6 +171,21 @@ paths:
               schema: { $ref: "#/components/schemas/ApiError" }
         "503": { $ref: "#/components/responses/AdminDisabled" }
   /api/admin/feeds/{id}:
+    get:
+      tags: [admin]
+      summary: 1 feed with its last fetch.
+      security: [{ adminToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: The feed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Feed" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: No such feed. }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
     delete:
       tags: [admin]
       summary: Remove a feed with its listings, then events no other feed lists.

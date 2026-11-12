@@ -32,10 +32,15 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 
@@ -159,6 +164,23 @@ fun Application.eventken(
                     val id = call.longParameter("id") ?: return@get call.notFound("feed")
                     val feed = services.feeds.find(id) ?: return@get call.notFound("feed")
                     call.respond(feed.feed)
+                }
+
+                put("/feeds/{id}/category") {
+                    val id = call.longParameter("id") ?: return@put call.notFound("feed")
+                    // The key is required, even when it is null, so an empty object never clears the category.
+                    val value = call.receive<JsonObject>()["defaultCategory"]
+                    if (value == null || (value != JsonNull && (value !is JsonPrimitive || !value.isString))) {
+                        return@put call.respond(
+                            HttpStatusCode.BadRequest,
+                            ApiError("bad_request", "The body needs defaultCategory, a string or null."),
+                        )
+                    }
+                    // Normalised as when the feed is added. Events already stored keep their categories until the
+                    // next fetch of the feed.
+                    val category = (value as? JsonPrimitive)?.contentOrNull?.let(SearchQuery::normaliseCategory)?.ifEmpty { null }
+                    if (!services.feeds.setDefaultCategory(id, category)) return@put call.notFound("feed")
+                    call.respond(services.feeds.find(id)!!.feed)
                 }
 
                 delete("/feeds/{id}") {

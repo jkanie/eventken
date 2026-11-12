@@ -54,6 +54,12 @@ class FeedRepository(
 
     suspend fun findByUrl(url: String): StoredFeed? = db.read { c -> c.prepare("$SELECT WHERE f.url = ?", url).single(::toStored) }
 
+    /** Sets the category that the feed's next fetches give to its events. False when there is no such feed. */
+    suspend fun setDefaultCategory(
+        id: Long,
+        category: String?,
+    ): Boolean = db.transaction { c -> c.prepare("UPDATE feed SET default_category = ? WHERE id = ?", category, id).update() > 0 }
+
     /** Deletes the feed with its listings, then every event that no other feed lists. */
     suspend fun delete(id: Long): Boolean =
         db.transaction { c ->

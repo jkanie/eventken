@@ -116,6 +116,20 @@ class EventkenClientTest {
         }
 
     @Test
+    fun setFeedCategorySendsTheKeyEvenForNull() =
+        runTest {
+            val body = """{"id":4,"url":"https://example.org/e.ics","kind":"ICAL","createdAt":"2026-06-01T00:00:00Z"}"""
+            client(body = body).setFeedCategory("example-token", 4, null)
+            client(body = body).setFeedCategory("example-token", 4, "music")
+
+            assertEquals(listOf("/api/admin/feeds/4/category"), requests.map { it.url.encodedPath }.distinct())
+            assertEquals(HttpMethod.Put, requests.first().method)
+            assertEquals("Bearer example-token", requests.first().headers[HttpHeaders.Authorization])
+            val sent = requests.map { (it.body as TextContent).text }
+            assertEquals(listOf("""{"defaultCategory":null}""", """{"defaultCategory":"music"}"""), sent)
+        }
+
+    @Test
     fun calendarsComeBackAsTheServersText() =
         runTest {
             val ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"

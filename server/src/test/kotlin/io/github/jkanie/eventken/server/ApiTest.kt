@@ -14,6 +14,7 @@ import io.github.jkanie.eventken.shared.search.SearchQuery
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -230,6 +231,47 @@ class ApiTest {
 
                 // 1 feed reads the same as its row in the list, and needs the token like the list.
                 assertEquals(feeds.first(), eventken.feed(token, feeds.first().id))
+
+                // The default category can be set (normalised as on create), cleared, and needs the token.
+                val id = feeds.first().id
+                assertEquals("night market", eventken.setFeedCategory(token, id, "  Night Market ").defaultCategory)
+                assertEquals("night market", eventken.feed(token, id).defaultCategory)
+                // Stored events take the category on the next fetch of the feed.
+                assertEquals(0, eventken.categories().count { it.category == "night market" })
+                eventken.ingestNow(token)
+                assertTrue(eventken.categories().single { it.category == "night market" }.events > 0)
+                assertEquals(null, eventken.setFeedCategory(token, id, null).defaultCategory)
+                assertEquals(null, eventken.setFeedCategory(token, id, "   ").defaultCategory)
+                val named = "{\"defaultCategory\":\"x\"}"
+                val noToken =
+                    client.put("/api/admin/feeds/$id/category") {
+                        contentType(ContentType.Application.Json)
+                        setBody(named)
+                    }
+                assertEquals(HttpStatusCode.Unauthorized, noToken.status)
+                // The key is required, so an empty object cannot clear the category by mistake.
+                val noKey =
+                    client.put("/api/admin/feeds/$id/category") {
+                        bearerAuth(token)
+                        contentType(ContentType.Application.Json)
+                        setBody("{}")
+                    }
+                assertEquals(HttpStatusCode.BadRequest, noKey.status)
+                val notText =
+                    client.put("/api/admin/feeds/$id/category") {
+                        bearerAuth(token)
+                        contentType(ContentType.Application.Json)
+                        setBody("{\"defaultCategory\":5}")
+                    }
+                assertEquals(HttpStatusCode.BadRequest, notText.status)
+                assertEquals(null, eventken.feed(token, id).defaultCategory)
+                val missing =
+                    client.put("/api/admin/feeds/999/category") {
+                        bearerAuth(token)
+                        contentType(ContentType.Application.Json)
+                        setBody(named)
+                    }
+                assertEquals(HttpStatusCode.NotFound, missing.status)
                 assertEquals(HttpStatusCode.Unauthorized, client.get("/api/admin/feeds/${feeds.first().id}").status)
                 assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/999") { bearerAuth(token) }.status)
                 assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/abc") { bearerAuth(token) }.status)

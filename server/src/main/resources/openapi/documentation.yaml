@@ -197,6 +197,32 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorised" }
         "404": { description: No such feed. }
         "503": { $ref: "#/components/responses/AdminDisabled" }
+  /api/admin/feeds/{id}/category:
+    put:
+      tags: [admin]
+      summary: Set or clear the category that the feed's next fetches give to its events.
+      security: [{ adminToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [defaultCategory]
+              properties:
+                defaultCategory: { type: string, nullable: true, description: "Trimmed and lower-cased. Blank or null clears it." }
+      responses:
+        "200":
+          description: The feed with its new category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Feed" }
+        "400": { description: The body has no defaultCategory, or it is not a string or null. }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: No such feed. }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
   /api/admin/feeds/{id}/ingest:
     post:
       tags: [admin]

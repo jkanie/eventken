@@ -331,7 +331,9 @@ class ApiTest {
     @Test
     fun healthAndOpenApi() =
         api { _, _ ->
-            assertEquals("""{"status":"ok","database":"ok"}""", client.get("/health").bodyAsText())
+            val health = client.get("/health")
+            assertEquals("""{"status":"ok","database":"ok"}""", health.bodyAsText())
+            assertEquals("no-store", health.headers[HttpHeaders.CacheControl])
             val spec = client.get("/openapi.yaml")
             assertEquals(HttpStatusCode.OK, spec.status)
             assertTrue(spec.bodyAsText().startsWith("openapi: 3.0.3"))

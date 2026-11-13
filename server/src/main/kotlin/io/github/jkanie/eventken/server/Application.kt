@@ -90,6 +90,8 @@ fun Application.eventken(
     routing {
         get("/health") {
             val database = runCatching { services.db.read { c -> c.prepare("SELECT 1").single { it.getInt(1) } } }.isSuccess
+            // A cache between a monitor and the server must not answer for the server, least of all with an old 200.
+            call.response.header(HttpHeaders.CacheControl, "no-store")
             call.respond(
                 if (database) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable,
                 mapOf("status" to if (database) "ok" else "degraded", "database" to if (database) "ok" else "unreachable"),

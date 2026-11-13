@@ -185,7 +185,7 @@ All settings are environment variables, so no secret has to live in a file. `.en
 | `DELETE /api/admin/feeds/{id}` | admin | Remove a feed with its listings, then the events no other feed lists. |
 | `POST /api/admin/feeds/{id}/ingest` | admin | Fetch 1 feed now. |
 | `POST /api/admin/ingest` | admin | Fetch every feed now. |
-| `GET /health` | anyone | `{"status":"ok","database":"ok"}`, or 503. |
+| `GET /health` | anyone | `{"status":"ok","database":"ok"}`, or 503. Sent with `Cache-Control: no-store`, such that no cache answers for the server. |
 | `GET /openapi.yaml`, `GET /docs` | anyone | The OpenAPI file and Swagger UI. |
 
 A bad query gets 400 with every problem in 1 message, for example `{"error":"invalid_query","message":"radiusKm needs lat and lon."}`.

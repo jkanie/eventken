@@ -20,6 +20,7 @@ paths:
     get:
       tags: [health]
       summary: Whether the server can reach its database.
+      description: Sent with Cache-Control no-store, such that no cache answers for the server.
       responses:
         "200":
           description: Healthy.

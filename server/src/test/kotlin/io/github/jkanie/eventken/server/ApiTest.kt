@@ -8,6 +8,7 @@ import io.github.jkanie.eventken.server.support.Fixtures
 import io.github.jkanie.eventken.server.support.TestDatabase
 import io.github.jkanie.eventken.shared.api.EventkenApiException
 import io.github.jkanie.eventken.shared.api.EventkenClient
+import io.github.jkanie.eventken.shared.model.CategoryCount
 import io.github.jkanie.eventken.shared.model.FeedKind
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.search.SearchQuery
@@ -74,6 +75,21 @@ class ApiTest {
             val detail = eventken.event(concert.id)
             assertEquals(2, detail.sources.size)
             assertTrue(eventken.categories().any { it.category == "music" })
+        }
+
+    @Test
+    fun categoriesCanBeCutToTheMostUsed() =
+        api { services, _ ->
+            seed(services, Fixtures.dir)
+            val all = Json.decodeFromString<List<CategoryCount>>(client.get("/api/categories").bodyAsText())
+            assertTrue(all.size > 2, "the fixtures hold more than 2 categories: $all")
+            val top = Json.decodeFromString<List<CategoryCount>>(client.get("/api/categories?limit=2").bodyAsText())
+            assertEquals(all.take(2), top)
+            for (bad in listOf("0", "101", "x", "")) {
+                val response = client.get("/api/categories?limit=$bad")
+                assertEquals(HttpStatusCode.BadRequest, response.status, "limit=$bad")
+                assertEquals("""{"error":"bad_request","message":"limit must be between 1 and 100."}""", response.bodyAsText())
+            }
         }
 
     @Test

@@ -177,7 +177,7 @@ All settings are environment variables, so no secret has to live in a file. `.en
 | `GET /api/events/{id}` | anyone | 1 event with its description, organiser, every feed that lists it. |
 | `GET /api/events/calendar.ics` | anyone | 1 page of search results (the same query parameters as `/api/events`) as 1 iCalendar file (`events.ics`), each event with its description. |
 | `GET /api/events/{id}/calendar.ics` | anyone | 1 event as an iCalendar file (`event-ID.ics`), to add it to a calendar app. A timed event is written in UTC. An all-day event keeps its dates in its own time zone. |
-| `GET /api/categories` | anyone | Categories of events that have not ended, with counts. |
+| `GET /api/categories` | anyone | Categories of events that have not ended, with counts, most used first. `?limit=5` keeps the 5 most used (1 to 100). |
 | `GET /api/admin/feeds` | admin | Feeds with their last fetch status. `?kind=ICAL` or `?kind=JSONLD` (in any case) keeps 1 kind. |
 | `POST /api/admin/feeds` | admin | Add a feed: `{"url": "...", "kind": "ICAL" or "JSONLD", "defaultCategory": "..."}`. |
 | `GET /api/admin/feeds/{id}` | admin | 1 feed with its last fetch status, as in the list. |

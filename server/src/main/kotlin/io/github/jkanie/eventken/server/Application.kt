@@ -47,6 +47,9 @@ import org.slf4j.event.Level
 
 private val log = LoggerFactory.getLogger("io.github.jkanie.eventken.server")
 
+/** The largest ?limit that GET /api/categories takes. */
+const val MAX_CATEGORY_LIMIT = 100
+
 fun Application.eventken(
     services: Services,
     scheduleIngest: Boolean = false,
@@ -145,7 +148,17 @@ fun Application.eventken(
                 )
             }
             get("/categories") {
-                call.respond(services.events.categories(services.clock.now()))
+                // ?limit=N keeps the N most used, such as for a row of filter chips.
+                val limit = call.request.queryParameters["limit"]
+                val top = limit?.toIntOrNull()?.takeIf { it in 1..MAX_CATEGORY_LIMIT }
+                if (limit != null && top == null) {
+                    return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiError("bad_request", "limit must be between 1 and $MAX_CATEGORY_LIMIT."),
+                    )
+                }
+                val categories = services.events.categories(services.clock.now())
+                call.respond(if (top == null) categories else categories.take(top))
             }
 
             route("/admin") {

@@ -141,6 +141,7 @@ paths:
       parameters:
         - { name: kind, in: query, schema: { type: string, enum: [ICAL, JSONLD] }, description: "Only feeds of this kind, in any case." }
         - { name: category, in: query, schema: { type: string }, description: "Only feeds with this default category, in any case. With no value, only the feeds that have none." }
+        - { name: q, in: query, schema: { type: string }, description: "Only feeds whose URL holds this text, in any case. A blank value keeps every feed." }
       responses:
         "200":
           description: The feeds.

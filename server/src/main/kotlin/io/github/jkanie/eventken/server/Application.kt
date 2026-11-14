@@ -183,6 +183,10 @@ fun Application.eventken(
                         val wanted = SearchQuery.normaliseCategory(category).ifEmpty { null }
                         feeds = feeds.filter { it.defaultCategory == wanted }
                     }
+                    // ?q=example.org keeps the feeds whose URL holds the text, in any case. A blank q keeps every feed.
+                    call.request.queryParameters["q"]?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
+                        feeds = feeds.filter { it.url.contains(text, ignoreCase = true) }
+                    }
                     call.respond(feeds)
                 }
 

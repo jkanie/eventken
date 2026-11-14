@@ -186,6 +186,28 @@ class ApiTest {
         }
 
     @Test
+    fun feedsCanBeFoundByPartOfTheirUrl() =
+        api { services, _ ->
+            val parks = services.feeds.create("https://Parks.example.org/events.ics", FeedKind.ICAL, null)
+            val library = services.feeds.create("https://library.example.net/whats-on", FeedKind.JSONLD, "talks")
+            val gigs = services.feeds.create("https://gigs.example.org/feed.ics", FeedKind.ICAL, "music")
+
+            suspend fun ids(query: String): List<Long> {
+                val response = client.get("/api/admin/feeds$query") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, response.status)
+                return Json.parseToJsonElement(response.bodyAsText()).jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.long }
+            }
+            assertEquals(listOf(parks.id, gigs.id), ids("?q=example.org"))
+            assertEquals(listOf(parks.id), ids("?q=PARKS"))
+            assertEquals(listOf(library.id), ids("?q=whats-on"))
+            assertEquals(emptyList(), ids("?q=example.com"))
+            // A blank q keeps every feed, and q works with the other filters.
+            assertEquals(listOf(parks.id, library.id, gigs.id), ids("?q=%20"))
+            assertEquals(listOf(gigs.id), ids("?q=example.org&kind=ical&category=music"))
+            assertEquals(emptyList(), ids("?q=library&kind=ical"))
+        }
+
+    @Test
     fun feedsCanBeListedByDefaultCategory() =
         api { services, _ ->
             val music = services.feeds.create("https://example.org/a.ics", FeedKind.ICAL, "music")

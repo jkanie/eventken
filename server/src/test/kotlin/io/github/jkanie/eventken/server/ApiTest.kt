@@ -186,6 +186,29 @@ class ApiTest {
         }
 
     @Test
+    fun feedsCanBeListedByDefaultCategory() =
+        api { services, _ ->
+            val music = services.feeds.create("https://example.org/a.ics", FeedKind.ICAL, "music")
+            val talks = services.feeds.create("https://example.org/events", FeedKind.JSONLD, "talks")
+            val plain = services.feeds.create("https://example.org/b.ics", FeedKind.ICAL, null)
+            val musicPage = services.feeds.create("https://example.org/gigs", FeedKind.JSONLD, "music")
+
+            suspend fun ids(query: String): List<Long> {
+                val response = client.get("/api/admin/feeds$query") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, response.status)
+                return Json.parseToJsonElement(response.bodyAsText()).jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.long }
+            }
+            assertEquals(listOf(music.id, musicPage.id), ids("?category=music"))
+            assertEquals(listOf(music.id, musicPage.id), ids("?category=%20Music%20"))
+            assertEquals(listOf(talks.id), ids("?category=talks"))
+            assertEquals(listOf(plain.id), ids("?category="))
+            assertEquals(emptyList(), ids("?category=sport"))
+            // With ?kind, both filters apply.
+            assertEquals(listOf(musicPage.id), ids("?category=music&kind=jsonld"))
+            assertEquals(listOf(plain.id), ids("?kind=ICAL&category="))
+        }
+
+    @Test
     fun aWrongTokenChangesNothing() =
         api { services, eventken ->
             val response =

@@ -167,15 +167,23 @@ fun Application.eventken(
                 install(AdminAuth) { token = services.config.adminToken }
 
                 get("/feeds") {
-                    val feeds = services.feeds.list()
-                    val kind = call.request.queryParameters["kind"] ?: return@get call.respond(feeds)
-                    val wanted =
-                        FeedKind.entries.firstOrNull { it.name.equals(kind, ignoreCase = true) }
-                            ?: return@get call.respond(
-                                HttpStatusCode.BadRequest,
-                                ApiError("bad_request", "kind must be ${FeedKind.entries.joinToString(" or ")}."),
-                            )
-                    call.respond(feeds.filter { it.kind == wanted })
+                    var feeds = services.feeds.list()
+                    call.request.queryParameters["kind"]?.let { kind ->
+                        val wanted =
+                            FeedKind.entries.firstOrNull { it.name.equals(kind, ignoreCase = true) }
+                                ?: return@get call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    ApiError("bad_request", "kind must be ${FeedKind.entries.joinToString(" or ")}."),
+                                )
+                        feeds = feeds.filter { it.kind == wanted }
+                    }
+                    // ?category=music keeps the feeds with that default category, normalised as when it is set.
+                    // ?category= with no value keeps the feeds that have none.
+                    call.request.queryParameters["category"]?.let { category ->
+                        val wanted = SearchQuery.normaliseCategory(category).ifEmpty { null }
+                        feeds = feeds.filter { it.defaultCategory == wanted }
+                    }
+                    call.respond(feeds)
                 }
 
                 post("/feeds") {

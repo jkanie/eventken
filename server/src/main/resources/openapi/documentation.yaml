@@ -237,7 +237,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Feed" }
-        "400": { description: The body has no defaultCategory, or it is not a string or null. }
+        "400": { description: "The body has no defaultCategory, or it is not a string or null." }
         "401": { $ref: "#/components/responses/Unauthorised" }
         "404": { description: No such feed. }
         "503": { $ref: "#/components/responses/AdminDisabled" }
@@ -268,6 +268,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/IngestReport" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
+  /api/admin/stats:
+    get:
+      tags: [admin]
+      summary: Count the events and the feeds.
+      description: Each event is in exactly 1 of upcoming (not ended yet, as search reads it), past and cancelled, so the 3 add up to events.
+      security: [{ adminToken: [] }]
+      responses:
+        "200":
+          description: The counts now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventStats" }
         "401": { $ref: "#/components/responses/Unauthorised" }
         "503": { $ref: "#/components/responses/AdminDisabled" }
 components:
@@ -336,6 +350,15 @@ components:
       properties:
         category: { type: string }
         events: { type: integer, format: int64 }
+    EventStats:
+      type: object
+      required: [events, upcoming, past, cancelled, feeds]
+      properties:
+        events: { type: integer, format: int64 }
+        upcoming: { type: integer, format: int64 }
+        past: { type: integer, format: int64 }
+        cancelled: { type: integer, format: int64 }
+        feeds: { type: integer, format: int64 }
     NewFeed:
       type: object
       required: [url, kind]

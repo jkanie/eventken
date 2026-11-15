@@ -175,6 +175,45 @@ class ApiTest {
         }
 
     @Test
+    fun statsCountEveryEventOnce() =
+        api { services, eventken ->
+            suspend fun stats(): Map<String, Long> {
+                val response = client.get("/api/admin/stats") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, response.status)
+                return Json.parseToJsonElement(response.bodyAsText()).jsonObject.mapValues { it.value.jsonPrimitive.long }
+            }
+            assertEquals(mapOf("events" to 0L, "upcoming" to 0L, "past" to 0L, "cancelled" to 0L, "feeds" to 0L), stats())
+
+            seed(services, Fixtures.dir)
+            val all = SearchQuery.builder().includeCancelled(true)
+            for (now in listOf("2027-07-01T00:00:00Z", "2027-07-12T00:00:00Z")) {
+                clock.now = Instant.parse(now)
+                val counts = stats()
+                assertEquals(listOf("events", "upcoming", "past", "cancelled", "feeds"), counts.keys.toList())
+                assertEquals(counts["events"], counts["upcoming"]!! + counts["past"]!! + counts["cancelled"]!!, now)
+                // upcoming is what search finds from now, and search with the cancelled ones adds those not ended yet.
+                assertEquals(eventken.search(SearchQuery()).total, counts["upcoming"], now)
+                assertTrue(counts["cancelled"]!! > 0, now)
+                assertEquals(
+                    services.feeds
+                        .list()
+                        .size
+                        .toLong(),
+                    counts["feeds"],
+                    now,
+                )
+                assertTrue(eventken.search(all.build()).total <= counts["upcoming"]!! + counts["cancelled"]!!, now)
+            }
+            // Every fixture event starts in July 2027: none has ended on July 1, some have by July 12.
+            clock.now = Instant.parse("2027-07-01T00:00:00Z")
+            assertEquals(0L, stats()["past"])
+            clock.now = Instant.parse("2027-07-12T00:00:00Z")
+            assertTrue(stats()["past"]!! > 0)
+
+            assertEquals(HttpStatusCode.Unauthorized, client.get("/api/admin/stats").status)
+        }
+
+    @Test
     fun adminEndpointsAreOffWithoutAToken() =
         api(ServerConfig(adminToken = null)) { _, _ ->
             val response = client.get("/api/admin/feeds")

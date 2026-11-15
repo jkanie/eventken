@@ -16,12 +16,26 @@ import io.github.jkanie.eventken.shared.model.EventSummary
 import io.github.jkanie.eventken.shared.model.SearchPage
 import io.github.jkanie.eventken.shared.search.SearchQuery
 import io.github.jkanie.eventken.shared.search.SortOrder
+import kotlinx.serialization.Serializable
 import java.sql.ResultSet
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.time.Instant
 
-/** Read side: search, 1 event, category counts. */
+/**
+ * The counts of GET /api/admin/stats. Each event is in exactly 1 of [upcoming] (not ended yet, as search reads it),
+ * [past] (ended) and [cancelled], so the 3 add up to [events].
+ */
+@Serializable
+data class EventStats(
+    val events: Long,
+    val upcoming: Long,
+    val past: Long,
+    val cancelled: Long,
+    val feeds: Long,
+)
+
+/** Read side: search, 1 event, category counts, the admin counts. */
 class EventRepository(
     private val db: Db,
 ) {
@@ -81,6 +95,32 @@ class EventRepository(
                     """.trimIndent(),
                     now,
                 ).list { CategoryCount(it.getString("category"), it.getLong("events")) }
+        }
+
+    /** The admin counts at [now]. An event without an end has ended once it has started, as in search. */
+    suspend fun stats(now: Instant): EventStats =
+        db.read { c ->
+            c
+                .prepare(
+                    """
+                    SELECT count(*) AS events,
+                           count(*) FILTER (WHERE NOT e.cancelled AND coalesce(e.ends_at, e.starts_at) >= ?) AS upcoming,
+                           count(*) FILTER (WHERE NOT e.cancelled AND coalesce(e.ends_at, e.starts_at) < ?) AS past,
+                           count(*) FILTER (WHERE e.cancelled) AS cancelled,
+                           (SELECT count(*) FROM feed) AS feeds
+                    FROM event e
+                    """.trimIndent(),
+                    now,
+                    now,
+                ).single { rs ->
+                    EventStats(
+                        events = rs.getLong("events"),
+                        upcoming = rs.getLong("upcoming"),
+                        past = rs.getLong("past"),
+                        cancelled = rs.getLong("cancelled"),
+                        feeds = rs.getLong("feeds"),
+                    )
+                }!!
         }
 
     private fun toSummary(rs: ResultSet) =

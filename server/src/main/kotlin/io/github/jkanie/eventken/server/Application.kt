@@ -239,6 +239,8 @@ fun Application.eventken(
                 }
 
                 post("/ingest") { call.respond(services.ingest.ingestAll()) }
+
+                get("/stats") { call.respond(services.events.stats(services.clock.now())) }
             }
         }
     }

@@ -214,6 +214,44 @@ class ApiTest {
         }
 
     @Test
+    fun statsOf1FeedCountItsOwnEvents() =
+        api { services, _ ->
+            suspend fun stats(id: Long): Map<String, Long> {
+                val response = client.get("/api/admin/feeds/$id/stats") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, response.status)
+                return Json.parseToJsonElement(response.bodyAsText()).jsonObject.mapValues { it.value.jsonPrimitive.long }
+            }
+            val lines = seed(services, Fixtures.dir)
+            val feeds = services.feeds.listStored()
+            assertEquals(lines.size, feeds.size)
+            clock.now = Instant.parse("2027-07-12T00:00:00Z")
+            val all = client.get("/api/admin/stats") { bearerAuth(token) }.bodyAsText()
+            val total =
+                Json
+                    .parseToJsonElement(all)
+                    .jsonObject["events"]!!
+                    .jsonPrimitive.long
+            var sum = 0L
+            for (line in lines) {
+                val feed = feeds.single { it.feed.url.endsWith("/" + line.path) }
+                val counts = stats(feed.feed.id)
+                // Each event that the feed's file holds is counted once for that feed.
+                assertEquals(line.parsed.toLong(), counts["events"], line.path)
+                assertEquals(counts["events"], counts["upcoming"]!! + counts["past"]!! + counts["cancelled"]!!, line.path)
+                assertEquals(1L, counts["feeds"], line.path)
+                sum += counts["events"]!!
+            }
+            // An event that 2 feeds list counts for each, so the feeds add up to at least the total.
+            assertTrue(sum >= total && total > 0, "$sum, $total")
+
+            val empty = services.feeds.create("https://example.org/empty.ics", FeedKind.ICAL, defaultCategory = null)
+            assertEquals(mapOf("events" to 0L, "upcoming" to 0L, "past" to 0L, "cancelled" to 0L, "feeds" to 1L), stats(empty.id))
+            assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/999999/stats") { bearerAuth(token) }.status)
+            assertEquals(HttpStatusCode.NotFound, client.get("/api/admin/feeds/x/stats") { bearerAuth(token) }.status)
+            assertEquals(HttpStatusCode.Unauthorized, client.get("/api/admin/feeds/${empty.id}/stats").status)
+        }
+
+    @Test
     fun adminEndpointsAreOffWithoutAToken() =
         api(ServerConfig(adminToken = null)) { _, _ ->
             val response = client.get("/api/admin/feeds")

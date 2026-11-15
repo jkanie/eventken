@@ -241,6 +241,23 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorised" }
         "404": { description: No such feed. }
         "503": { $ref: "#/components/responses/AdminDisabled" }
+  /api/admin/feeds/{id}/stats:
+    get:
+      tags: [admin]
+      summary: Count the events of 1 feed.
+      description: The counts of /api/admin/stats for the events that this feed lists. An event that 2 feeds list counts for each. feeds is 1.
+      security: [{ adminToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: The counts now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventStats" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: No such feed. }
+        "503": { $ref: "#/components/responses/AdminDisabled" }
   /api/admin/feeds/{id}/ingest:
     post:
       tags: [admin]

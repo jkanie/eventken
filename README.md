@@ -186,6 +186,7 @@ All settings are environment variables, so no secret has to live in a file. `.en
 | `POST /api/admin/feeds/{id}/ingest` | admin | Fetch 1 feed now. |
 | `POST /api/admin/ingest` | admin | Fetch every feed now. |
 | `GET /api/admin/stats` | admin | Counts: `events`, then `upcoming` (not ended yet, as search reads it), `past`, `cancelled`, which add up to `events`, plus `feeds`. |
+| `GET /api/admin/feeds/{id}/stats` | admin | The same counts for the events that 1 feed lists, with `feeds` at 1. An event that 2 feeds list counts for each. |
 | `GET /health` | anyone | `{"status":"ok","database":"ok"}`, or 503. Sent with `Cache-Control: no-store`, such that no cache answers for the server. |
 | `GET /openapi.yaml`, `GET /docs` | anyone | The OpenAPI file and Swagger UI. |
 

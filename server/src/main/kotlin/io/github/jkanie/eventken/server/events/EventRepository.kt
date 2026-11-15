@@ -97,9 +97,17 @@ class EventRepository(
                 ).list { CategoryCount(it.getString("category"), it.getLong("events")) }
         }
 
-    /** The admin counts at [now]. An event without an end has ended once it has started, as in search. */
-    suspend fun stats(now: Instant): EventStats =
+    /**
+     * The admin counts at [now]. An event without an end has ended once it has started, as in search. With [feedId],
+     * only the events that feed lists count (an event that 2 feeds list counts for each), and feeds is 1.
+     */
+    suspend fun stats(
+        now: Instant,
+        feedId: Long? = null,
+    ): EventStats =
         db.read { c ->
+            val only = if (feedId == null) "" else "WHERE e.id IN (SELECT s.event_id FROM event_source s WHERE s.feed_id = ?)"
+            val feeds = if (feedId == null) "(SELECT count(*) FROM feed)" else "1"
             c
                 .prepare(
                     """
@@ -107,11 +115,11 @@ class EventRepository(
                            count(*) FILTER (WHERE NOT e.cancelled AND coalesce(e.ends_at, e.starts_at) >= ?) AS upcoming,
                            count(*) FILTER (WHERE NOT e.cancelled AND coalesce(e.ends_at, e.starts_at) < ?) AS past,
                            count(*) FILTER (WHERE e.cancelled) AS cancelled,
-                           (SELECT count(*) FROM feed) AS feeds
+                           $feeds AS feeds
                     FROM event e
+                    $only
                     """.trimIndent(),
-                    now,
-                    now,
+                    *listOfNotNull<Any>(now, now, feedId).toTypedArray(),
                 ).single { rs ->
                     EventStats(
                         events = rs.getLong("events"),

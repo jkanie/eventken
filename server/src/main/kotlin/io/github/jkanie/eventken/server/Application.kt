@@ -232,6 +232,12 @@ fun Application.eventken(
                     if (services.feeds.delete(id)) call.respond(HttpStatusCode.NoContent) else call.notFound("feed")
                 }
 
+                get("/feeds/{id}/stats") {
+                    val id = call.longParameter("id") ?: return@get call.notFound("feed")
+                    services.feeds.find(id) ?: return@get call.notFound("feed")
+                    call.respond(services.events.stats(services.clock.now(), id))
+                }
+
                 post("/feeds/{id}/ingest") {
                     val id = call.longParameter("id") ?: return@post call.notFound("feed")
                     val result = services.ingest.ingestFeed(id) ?: return@post call.notFound("feed")

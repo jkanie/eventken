@@ -159,7 +159,13 @@ fun Application.eventken(
                         ApiError("bad_request", "limit must be between 1 and $MAX_CATEGORY_LIMIT."),
                     )
                 }
-                val categories = services.events.categories(services.clock.now())
+                // ?q=mu keeps the categories that start with the text, read as a category is (trimmed, in lower
+                // case), such as for a search box that suggests as it is typed. The limit applies after it.
+                val start =
+                    call.request.queryParameters["q"]
+                        ?.let(SearchQuery::normaliseCategory)
+                        .orEmpty()
+                val categories = services.events.categories(services.clock.now()).filter { it.category.startsWith(start) }
                 call.respond(if (top == null) categories else categories.take(top))
             }
 

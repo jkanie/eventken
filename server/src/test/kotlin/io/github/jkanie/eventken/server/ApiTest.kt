@@ -93,6 +93,23 @@ class ApiTest {
         }
 
     @Test
+    fun categoriesCanBeFoundByTheirStart() =
+        api { services, _ ->
+            seed(services, Fixtures.dir)
+
+            suspend fun get(query: String) = Json.decodeFromString<List<CategoryCount>>(client.get("/api/categories$query").bodyAsText())
+            val all = get("")
+            val start = all.first().category.take(2)
+            val want = all.filter { it.category.startsWith(start) }
+            assertTrue(want.isNotEmpty())
+            assertEquals(want, get("?q=$start"))
+            assertEquals(want, get("?q=%20${start.uppercase()}%20"))
+            assertEquals(want.take(1), get("?q=$start&limit=1"))
+            assertEquals(all, get("?q="))
+            assertEquals(emptyList(), get("?q=zzzz"))
+        }
+
+    @Test
     fun badQueriesListEveryProblem() =
         api { _, _ ->
             val response = client.get("/api/events?lat=91&radiusKm=5&sort=sideways")

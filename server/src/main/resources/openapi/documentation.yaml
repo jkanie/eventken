@@ -120,6 +120,7 @@ paths:
       summary: Categories of events that have not ended, most used first.
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 }, description: "Only the N most used." }
+        - { name: q, in: query, schema: { type: string }, description: "Only categories that start with this text, in any case. The limit applies after it." }
       responses:
         "200":
           description: Categories with event counts.

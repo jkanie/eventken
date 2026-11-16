@@ -12,28 +12,15 @@ import io.github.jkanie.eventken.shared.geo.Geo
 import io.github.jkanie.eventken.shared.model.CategoryCount
 import io.github.jkanie.eventken.shared.model.EventDetail
 import io.github.jkanie.eventken.shared.model.EventSource
+import io.github.jkanie.eventken.shared.model.EventStats
 import io.github.jkanie.eventken.shared.model.EventSummary
 import io.github.jkanie.eventken.shared.model.SearchPage
 import io.github.jkanie.eventken.shared.search.SearchQuery
 import io.github.jkanie.eventken.shared.search.SortOrder
-import kotlinx.serialization.Serializable
 import java.sql.ResultSet
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.time.Instant
-
-/**
- * The counts of GET /api/admin/stats. Each event is in exactly 1 of [upcoming] (not ended yet, as search reads it),
- * [past] (ended) and [cancelled], so the 3 add up to [events].
- */
-@Serializable
-data class EventStats(
-    val events: Long,
-    val upcoming: Long,
-    val past: Long,
-    val cancelled: Long,
-    val feeds: Long,
-)
 
 /** Read side: search, 1 event, category counts, the admin counts. */
 class EventRepository(

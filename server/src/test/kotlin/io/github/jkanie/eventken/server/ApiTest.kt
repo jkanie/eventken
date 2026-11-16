@@ -476,6 +476,18 @@ class ApiTest {
                 // 1 feed reads the same as its row in the list, and needs the token like the list.
                 assertEquals(feeds.first(), eventken.feed(token, feeds.first().id))
 
+                // The shared client reads the counts and fetches 1 feed again, as the routes answer.
+                val stats = eventken.stats(token)
+                assertEquals(stats.events, stats.upcoming + stats.past + stats.cancelled)
+                assertEquals(feeds.size.toLong(), stats.feeds)
+                assertEquals(8L, eventken.stats(token, feeds.first().id).events)
+                val refetch = eventken.ingestFeed(token, feeds.first().id)
+                assertEquals(feeds.first().id to 8, refetch.feedId to refetch.parsed)
+                assertEquals(0, refetch.created)
+                assertEquals(8L, eventken.stats(token, feeds.first().id).events)
+                assertEquals(HttpStatusCode.NotFound, assertFailsWith<EventkenApiException> { eventken.ingestFeed(token, 999999) }.status)
+                assertEquals(HttpStatusCode.NotFound, assertFailsWith<EventkenApiException> { eventken.stats(token, 999999) }.status)
+
                 // The default category can be set (normalised as on create), cleared, and needs the token.
                 val id = feeds.first().id
                 assertEquals("night market", eventken.setFeedCategory(token, id, "  Night Market ").defaultCategory)

@@ -100,6 +100,19 @@ data class IngestReport(
     val feeds: List<FeedIngestResult>,
 )
 
+/**
+ * The counts of GET /api/admin/stats and GET /api/admin/feeds/{id}/stats. Each event is in exactly 1 of [upcoming]
+ * (not ended yet, as search reads it), [past] (ended) and [cancelled], so the 3 add up to [events].
+ */
+@Serializable
+data class EventStats(
+    val events: Long,
+    val upcoming: Long,
+    val past: Long,
+    val cancelled: Long,
+    val feeds: Long,
+)
+
 @Serializable
 data class ApiError(
     val error: String,

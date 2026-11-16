@@ -216,7 +216,7 @@ EVENTKEN_TEST_JDBC_URL=jdbc:postgresql://localhost:5432/eventken ./gradlew :serv
 
 | Module | Tests | What they cover |
 |---|---|---|
-| server | 131 | iCalendar and JSON-LD parsing of the sample feeds, the iCalendar files of 1 event and of a page of results (read back with the parser), recurring rules (a moved and a cancelled week, a daylight-saving change, monthly and yearly rules, the 12-month window), matching, merging, the address guard, robots.txt, the fetcher against a local HTTP server (redirects, 304, size limit, robots.txt), ingest and search against PostgreSQL, the HTTP API through the shared client. |
+| server | 140 | iCalendar and JSON-LD parsing of the sample feeds, the iCalendar files of 1 event and of a page of results (read back with the parser), recurring rules (a moved and a cancelled week, a daylight-saving change, monthly and yearly rules, the 12-month window), matching, merging, the address guard, robots.txt, the fetcher against a local HTTP server (redirects, 304, size limit, robots.txt), ingest and search against PostgreSQL, the HTTP API through the shared client. |
 | shared on the JVM | 37 | Query rules, reminder rules across time zones, the API client against a mock engine, the SQLite cache, the screen state models, date and distance text. |
 | desktopApp | 4 | The real Compose screens, rendered off-screen against a fake server: search, open, save, the saved list, the organiser screen with the token. |
 | shared on Android | 28 | The common tests again, on the Android target, so the shared code is checked on both platforms. |

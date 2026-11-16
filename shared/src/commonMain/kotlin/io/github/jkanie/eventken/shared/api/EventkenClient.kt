@@ -3,7 +3,9 @@ package io.github.jkanie.eventken.shared.api
 import io.github.jkanie.eventken.shared.model.ApiError
 import io.github.jkanie.eventken.shared.model.CategoryCount
 import io.github.jkanie.eventken.shared.model.EventDetail
+import io.github.jkanie.eventken.shared.model.EventStats
 import io.github.jkanie.eventken.shared.model.Feed
+import io.github.jkanie.eventken.shared.model.FeedIngestResult
 import io.github.jkanie.eventken.shared.model.IngestReport
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.model.SearchPage
@@ -141,6 +143,18 @@ class EventkenClient(
     }
 
     suspend fun ingestNow(adminToken: String): IngestReport = http.post("api/admin/ingest") { admin(adminToken) }.unwrap()
+
+    /** Fetches 1 feed now, as [ingestNow] does for every feed. */
+    suspend fun ingestFeed(
+        adminToken: String,
+        id: Long,
+    ): FeedIngestResult = http.post("api/admin/feeds/$id/ingest") { admin(adminToken) }.unwrap()
+
+    /** The event counts of every feed, or of the feed [feedId] only. */
+    suspend fun stats(
+        adminToken: String,
+        feedId: Long? = null,
+    ): EventStats = http.get(if (feedId == null) "api/admin/stats" else "api/admin/feeds/$feedId/stats") { admin(adminToken) }.unwrap()
 
     override fun close() = http.close()
 

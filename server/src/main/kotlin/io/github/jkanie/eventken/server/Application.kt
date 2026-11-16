@@ -165,8 +165,17 @@ fun Application.eventken(
                     call.request.queryParameters["q"]
                         ?.let(SearchQuery::normaliseCategory)
                         .orEmpty()
+                // ?sort=name lists them A to Z, such as for a menu. With a limit, the N most used are kept 1st.
+                val badSort = ApiError("bad_request", "sort must be count or name.")
+                val byName =
+                    when (call.request.queryParameters["sort"] ?: "count") {
+                        "count" -> false
+                        "name" -> true
+                        else -> return@get call.respond(HttpStatusCode.BadRequest, badSort)
+                    }
                 val categories = services.events.categories(services.clock.now()).filter { it.category.startsWith(start) }
-                call.respond(if (top == null) categories else categories.take(top))
+                val kept = if (top == null) categories else categories.take(top)
+                call.respond(if (byName) kept.sortedBy { it.category } else kept)
             }
 
             route("/admin") {

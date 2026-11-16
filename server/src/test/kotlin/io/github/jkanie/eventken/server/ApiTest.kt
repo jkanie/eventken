@@ -111,6 +111,28 @@ class ApiTest {
         }
 
     @Test
+    fun categoriesCanBeSortedByName() =
+        api { services, eventken ->
+            seed(services, Fixtures.dir)
+
+            suspend fun get(query: String) = Json.decodeFromString<List<CategoryCount>>(client.get("/api/categories$query").bodyAsText())
+            val all = get("")
+            assertEquals(all.sortedBy { it.category }, get("?sort=name"))
+            assertEquals(all, get("?sort=count"))
+            // With a limit, the most used are kept, then put A to Z.
+            assertEquals(all.take(3).sortedBy { it.category }, get("?limit=3&sort=name"))
+            // The shared client sends each parameter.
+            assertEquals(all.take(3).sortedBy { it.category }, eventken.categories(limit = 3, byName = true))
+            val start = all.first().category.take(2)
+            assertEquals(get("?q=$start"), eventken.categories(startingWith = start))
+            assertEquals(all, eventken.categories())
+
+            val bad = client.get("/api/categories?sort=newest")
+            assertEquals(HttpStatusCode.BadRequest, bad.status)
+            assertEquals("""{"error":"bad_request","message":"sort must be count or name."}""", bad.bodyAsText())
+        }
+
+    @Test
     fun badQueriesListEveryProblem() =
         api { _, _ ->
             val response = client.get("/api/events?lat=91&radiusKm=5&sort=sideways")

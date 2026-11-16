@@ -66,7 +66,21 @@ class EventkenClient(
 
     suspend fun event(id: Long): EventDetail = http.get("api/events/$id").unwrap()
 
-    suspend fun categories(): List<CategoryCount> = http.get("api/categories").unwrap()
+    /**
+     * The categories of events that have not ended, most used 1st. [limit] keeps the N most used. [startingWith]
+     * keeps the ones that start with that text. [byName] lists the kept ones A to Z.
+     */
+    suspend fun categories(
+        limit: Int? = null,
+        startingWith: String? = null,
+        byName: Boolean = false,
+    ): List<CategoryCount> =
+        http
+            .get("api/categories") {
+                limit?.let { parameter("limit", it) }
+                startingWith?.let { parameter("q", it) }
+                if (byName) parameter("sort", "name")
+            }.unwrap()
 
     /** 1 event as an iCalendar file (RFC 5545), the text that the server sends. */
     suspend fun eventCalendar(id: Long): String = http.get("api/events/$id/calendar.ics").text()

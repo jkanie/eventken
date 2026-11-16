@@ -121,6 +121,7 @@ paths:
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 }, description: "Only the N most used." }
         - { name: q, in: query, schema: { type: string }, description: "Only categories that start with this text, in any case. The limit applies after it." }
+        - { name: sort, in: query, schema: { type: string, enum: [count, name], default: count }, description: "The order: the most used 1st, or A to Z. With a limit, the N most used are kept, then put in this order." }
       responses:
         "200":
           description: Categories with event counts.
@@ -130,7 +131,7 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/CategoryCount" }
         "400":
-          description: The limit is not a whole number from 1 to 100.
+          description: The limit is not a whole number from 1 to 100, or the sort is not count or name.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiError" }

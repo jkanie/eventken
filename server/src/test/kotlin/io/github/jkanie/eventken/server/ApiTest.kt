@@ -284,7 +284,7 @@ class ApiTest {
 
     @Test
     fun feedsCanBeListedByKind() =
-        api { services, _ ->
+        api { services, eventken ->
             val calendar = services.feeds.create("https://example.org/a.ics", FeedKind.ICAL, null)
             val page = services.feeds.create("https://example.org/events", FeedKind.JSONLD, null)
 
@@ -296,6 +296,8 @@ class ApiTest {
             assertEquals(listOf(calendar.id), ids("?kind=ICAL"))
             assertEquals(listOf(page.id), ids("?kind=jsonld"))
             assertEquals(listOf(calendar.id, page.id), ids(""))
+            // The shared client sends the kind by its name.
+            assertEquals(listOf(page.id), eventken.feeds(token, kind = FeedKind.JSONLD).map { it.id })
 
             val bad = client.get("/api/admin/feeds?kind=PDF") { bearerAuth(token) }
             assertEquals(HttpStatusCode.BadRequest, bad.status)
@@ -304,7 +306,7 @@ class ApiTest {
 
     @Test
     fun feedsCanBeFoundByPartOfTheirUrl() =
-        api { services, _ ->
+        api { services, eventken ->
             val parks = services.feeds.create("https://Parks.example.org/events.ics", FeedKind.ICAL, null)
             val library = services.feeds.create("https://library.example.net/whats-on", FeedKind.JSONLD, "talks")
             val gigs = services.feeds.create("https://gigs.example.org/feed.ics", FeedKind.ICAL, "music")
@@ -322,6 +324,13 @@ class ApiTest {
             assertEquals(listOf(parks.id, library.id, gigs.id), ids("?q=%20"))
             assertEquals(listOf(gigs.id), ids("?q=example.org&kind=ical&category=music"))
             assertEquals(emptyList(), ids("?q=library&kind=ical"))
+            // The shared client sends the same filters, "" as the category of the feeds with none.
+            assertEquals(
+                listOf(gigs.id),
+                eventken.feeds(token, kind = FeedKind.ICAL, category = "music", urlContains = "EXAMPLE.ORG").map { it.id },
+            )
+            assertEquals(listOf(parks.id), eventken.feeds(token, category = "").map { it.id })
+            assertEquals(listOf(library.id), eventken.feeds(token, urlContains = "whats-on", sort = "url").map { it.id })
         }
 
     @Test

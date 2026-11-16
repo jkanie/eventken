@@ -6,6 +6,7 @@ import io.github.jkanie.eventken.shared.model.EventDetail
 import io.github.jkanie.eventken.shared.model.EventStats
 import io.github.jkanie.eventken.shared.model.Feed
 import io.github.jkanie.eventken.shared.model.FeedIngestResult
+import io.github.jkanie.eventken.shared.model.FeedKind
 import io.github.jkanie.eventken.shared.model.IngestReport
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.model.SearchPage
@@ -94,15 +95,25 @@ class EventkenClient(
                 query.validated().toParameters().forEach { (name, value) -> parameter(name, value) }
             }.text()
 
-    /** Every feed, in id order, or sorted by [sort]: "url" (A to Z) or "events" (the most events 1st). */
+    /**
+     * Every feed, in id order, or sorted by [sort]: "url" (A to Z) or "events" (the most events 1st). [kind] keeps 1
+     * kind, [category] the feeds with that default category ("" the feeds with none), [urlContains] the feeds whose URL
+     * holds that text, in any case, as the server's filters do.
+     */
     suspend fun feeds(
         adminToken: String,
         sort: String? = null,
+        kind: FeedKind? = null,
+        category: String? = null,
+        urlContains: String? = null,
     ): List<Feed> =
         http
             .get("api/admin/feeds") {
                 admin(adminToken)
                 sort?.let { parameter("sort", it) }
+                kind?.let { parameter("kind", it.name) }
+                category?.let { parameter("category", it) }
+                urlContains?.let { parameter("q", it) }
             }.unwrap()
 
     suspend fun feed(

@@ -143,6 +143,7 @@ paths:
         - { name: kind, in: query, schema: { type: string, enum: [ICAL, JSONLD] }, description: "Only feeds of this kind, in any case." }
         - { name: category, in: query, schema: { type: string }, description: "Only feeds with this default category, in any case. With no value, only the feeds that have none." }
         - { name: q, in: query, schema: { type: string }, description: "Only feeds whose URL holds this text, in any case. A blank value keeps every feed." }
+        - { name: sort, in: query, schema: { type: string, enum: [id, url, events], default: id }, description: "The order: id, url (A to Z, in any case), events (the most events 1st). Ties keep the id order." }
       responses:
         "200":
           description: The feeds.
@@ -152,7 +153,7 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/Feed" }
         "400":
-          description: The kind is not ICAL or JSONLD.
+          description: The kind is not ICAL or JSONLD, or the sort is not 1 of id, url, events.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiError" }

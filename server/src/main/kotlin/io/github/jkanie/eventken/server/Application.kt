@@ -193,6 +193,16 @@ fun Application.eventken(
                     call.request.queryParameters["q"]?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
                         feeds = feeds.filter { it.url.contains(text, ignoreCase = true) }
                     }
+                    // ?sort=url lists the feeds A to Z by URL, in any case, and ?sort=events the feeds with the most
+                    // events 1st, such as to see which ones fill the calendar. Ties keep the id order, the default.
+                    val badSort = ApiError("bad_request", "sort must be 1 of id, url, events.")
+                    feeds =
+                        when (call.request.queryParameters["sort"] ?: "id") {
+                            "id" -> feeds
+                            "url" -> feeds.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.url })
+                            "events" -> feeds.sortedByDescending { it.eventCount }
+                            else -> return@get call.respond(HttpStatusCode.BadRequest, badSort)
+                        }
                     call.respond(feeds)
                 }
 

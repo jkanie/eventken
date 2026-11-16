@@ -25,6 +25,7 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -299,6 +300,47 @@ class ApiTest {
             assertEquals(listOf(parks.id, library.id, gigs.id), ids("?q=%20"))
             assertEquals(listOf(gigs.id), ids("?q=example.org&kind=ical&category=music"))
             assertEquals(emptyList(), ids("?q=library&kind=ical"))
+        }
+
+    @Test
+    fun feedsCanBeSortedByUrlOrByEventCount() =
+        api { services, eventken ->
+            seed(services, Fixtures.dir)
+            val zoo = services.feeds.create("https://Zoo.example.org/a.ics", FeedKind.ICAL, null)
+            val art = services.feeds.create("https://art.example.org/b.ics", FeedKind.ICAL, null)
+
+            suspend fun feeds(query: String): List<JsonObject> {
+                val response = client.get("/api/admin/feeds$query") { bearerAuth(token) }
+                assertEquals(HttpStatusCode.OK, response.status, query)
+                return Json.parseToJsonElement(response.bodyAsText()).jsonArray.map { it.jsonObject }
+            }
+
+            fun JsonObject.id() = this["id"]!!.jsonPrimitive.long
+
+            val byId = feeds("")
+            assertEquals(byId.map { it.id() }.sorted(), byId.map { it.id() })
+            assertEquals(byId, feeds("?sort=id"))
+            // The URL order ignores case, so Zoo comes last.
+            val byUrl = feeds("?sort=url")
+            assertEquals(
+                byId.map { it["url"]!!.jsonPrimitive.content }.sortedBy { it.lowercase() },
+                byUrl.map { it["url"]!!.jsonPrimitive.content },
+            )
+            assertEquals(zoo.id, byUrl.last().id())
+            // The most events 1st, and the 2 empty feeds last, in id order.
+            val byEvents = feeds("?sort=events")
+            val counts = byEvents.map { it["eventCount"]!!.jsonPrimitive.long }
+            assertEquals(counts.sortedDescending(), counts)
+            assertTrue(counts.first() > 0)
+            assertEquals(listOf(zoo.id, art.id), byEvents.takeLast(2).map { it.id() })
+            // sort works with the filters, and the shared client sends it.
+            assertEquals(listOf(art.id, zoo.id), feeds("?q=example.org&sort=url").map { it.id() })
+            assertEquals(byEvents.map { it.id() }, eventken.feeds(token, sort = "events").map { it.id })
+            assertEquals(byId.map { it.id() }, eventken.feeds(token).map { it.id })
+
+            val bad = client.get("/api/admin/feeds?sort=newest") { bearerAuth(token) }
+            assertEquals(HttpStatusCode.BadRequest, bad.status)
+            assertEquals("""{"error":"bad_request","message":"sort must be 1 of id, url, events."}""", bad.bodyAsText())
         }
 
     @Test

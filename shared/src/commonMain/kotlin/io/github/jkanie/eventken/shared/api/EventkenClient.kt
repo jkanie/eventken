@@ -78,7 +78,16 @@ class EventkenClient(
                 query.validated().toParameters().forEach { (name, value) -> parameter(name, value) }
             }.text()
 
-    suspend fun feeds(adminToken: String): List<Feed> = http.get("api/admin/feeds") { admin(adminToken) }.unwrap()
+    /** Every feed, in id order, or sorted by [sort]: "url" (A to Z) or "events" (the most events 1st). */
+    suspend fun feeds(
+        adminToken: String,
+        sort: String? = null,
+    ): List<Feed> =
+        http
+            .get("api/admin/feeds") {
+                admin(adminToken)
+                sort?.let { parameter("sort", it) }
+            }.unwrap()
 
     suspend fun feed(
         adminToken: String,

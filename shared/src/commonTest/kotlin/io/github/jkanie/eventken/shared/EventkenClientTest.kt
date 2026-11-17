@@ -62,6 +62,24 @@ class EventkenClientTest {
         }
 
     @Test
+    fun healthReadsADegradedServerAsAnAnswer() =
+        runTest {
+            val ok = client(body = """{"status":"ok","database":"ok"}""").health()
+            assertEquals(true, ok.ok)
+            assertEquals("/health", requests.single().url.encodedPath)
+
+            val degraded =
+                client(HttpStatusCode.ServiceUnavailable, """{"status":"degraded","database":"unreachable"}""").health()
+            assertEquals(false, degraded.ok)
+            assertEquals("unreachable", degraded.database)
+
+            // A 503 without that body, such as from a proxy in front of the server, is still an error.
+            val proxy = assertFailsWith<EventkenApiException> { client(HttpStatusCode.ServiceUnavailable, "Service Unavailable").health() }
+            assertEquals(HttpStatusCode.ServiceUnavailable, proxy.status)
+            assertFailsWith<EventkenApiException> { client(HttpStatusCode.InternalServerError, "{}").health() }
+        }
+
+    @Test
     fun adminCallsCarryTheBearerToken() =
         runTest {
             val body = """{"id":4,"url":"https://example.org/events.ics","kind":"ICAL","createdAt":"2026-06-01T00:00:00Z"}"""

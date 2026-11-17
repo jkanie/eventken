@@ -113,6 +113,18 @@ data class EventStats(
     val feeds: Long,
 )
 
+/**
+ * What GET /health answers: [status] is "ok" or "degraded", [database] is "ok" or "unreachable". [ok] is true only
+ * when the server can read its database.
+ */
+@Serializable
+data class Health(
+    val status: String,
+    val database: String,
+) {
+    val ok: Boolean get() = status == "ok"
+}
+
 @Serializable
 data class ApiError(
     val error: String,

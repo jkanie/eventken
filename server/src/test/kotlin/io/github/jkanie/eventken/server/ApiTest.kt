@@ -10,6 +10,7 @@ import io.github.jkanie.eventken.shared.api.EventkenApiException
 import io.github.jkanie.eventken.shared.api.EventkenClient
 import io.github.jkanie.eventken.shared.model.CategoryCount
 import io.github.jkanie.eventken.shared.model.FeedKind
+import io.github.jkanie.eventken.shared.model.Health
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.search.SearchQuery
 import io.ktor.client.request.bearerAuth
@@ -554,10 +555,13 @@ class ApiTest {
 
     @Test
     fun healthAndOpenApi() =
-        api { _, _ ->
+        api { _, eventken ->
             val health = client.get("/health")
             assertEquals("""{"status":"ok","database":"ok"}""", health.bodyAsText())
             assertEquals("no-store", health.headers[HttpHeaders.CacheControl])
+            // The shared client reads the same answer.
+            assertEquals(Health("ok", "ok"), eventken.health())
+            assertTrue(eventken.health().ok)
             val spec = client.get("/openapi.yaml")
             assertEquals(HttpStatusCode.OK, spec.status)
             assertTrue(spec.bodyAsText().startsWith("openapi: 3.0.3"))

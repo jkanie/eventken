@@ -7,6 +7,7 @@ import io.github.jkanie.eventken.shared.model.EventStats
 import io.github.jkanie.eventken.shared.model.Feed
 import io.github.jkanie.eventken.shared.model.FeedIngestResult
 import io.github.jkanie.eventken.shared.model.FeedKind
+import io.github.jkanie.eventken.shared.model.Health
 import io.github.jkanie.eventken.shared.model.IngestReport
 import io.github.jkanie.eventken.shared.model.NewFeed
 import io.github.jkanie.eventken.shared.model.SearchPage
@@ -166,6 +167,18 @@ class EventkenClient(
         adminToken: String,
         feedId: Long? = null,
     ): EventStats = http.get(if (feedId == null) "api/admin/stats" else "api/admin/feeds/$feedId/stats") { admin(adminToken) }.unwrap()
+
+    /**
+     * The server's health, as a monitor reads it. A degraded server answers 503 with the same body, which comes back
+     * here as a [Health] that is not [Health.ok], not as an error. Any other failure throws as the other calls do.
+     */
+    suspend fun health(): Health {
+        val response = http.get("health")
+        if (response.status == HttpStatusCode.ServiceUnavailable) {
+            runCatching { json.decodeFromString<Health>(response.bodyAsText()) }.getOrNull()?.let { return it }
+        }
+        return response.unwrap()
+    }
 
     override fun close() = http.close()
 
